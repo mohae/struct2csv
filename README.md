@@ -1,7 +1,7 @@
 # struct2csv
 [![Build Status](https://travis-ci.org/mohae/struct2csv.png)](https://travis-ci.org/mohae/struct2csv)
 
-_____Under development__
+__Under development__  
 Create CSV from a slice of structs.
 
 ## About
