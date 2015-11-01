@@ -31,6 +31,32 @@ type TstTags struct {
 	strings      []string
 }
 
+type TstEmbed struct {
+	Name string
+	Location
+	Notes
+	Stuff
+}
+
+type Location struct {
+	ID int
+	Address
+	Phone string
+	Long  string
+	Lat   string
+}
+
+type Address struct {
+	Addr1 string
+	Addr2 string
+	City  string
+	State string
+	Zip   string
+}
+
+type Notes map[string]string
+type Stuff []string
+
 func TestNewTranscoder(t *testing.T) {
 	tc := NewTranscoder()
 	if tc.useTags != true {
@@ -130,11 +156,11 @@ JSONTAG:
 	hdr, err = tc.GetHeaders(TstTags{})
 	if err != nil {
 		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
-		goto JSONTAG
+		goto EMBED
 	}
 	if len(hdr) != len(expectedHeaders) {
 		t.Errorf("Expected %d column headers, got %d", len(expectedHeaders), len(hdr))
-		goto JSONTAG
+		goto EMBED
 	}
 	for i, v := range hdr {
 		if v != expectedHeaders[i] {
@@ -142,23 +168,21 @@ JSONTAG:
 		}
 	}
 
-	//EMBED:
-	/*
-	    expectedHeaders = []string{"Name", "Ingredients", "Instructions", "ID", "Addr1", "Addr2", "City", "State", "Zip", "Phone", "Long", "Lat"}
-	    hdr, err = GetHeaders(TstEmbed{})
-	    if err != nil {
-	   		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
-	       return
-	   	}
-	     if len(hdr) != len(expectedHeaders) {
-	   		t.Errorf("Expected %d column headers, got %d", len(expectedHeaders), len(hdr))
-	      t.Errorf("%#v\n", hdr)
-	   		return
-	    }
-	   	for i, v := range hdr {
-	   		if v != expectedHeaders[i] {
-	   			t.Errorf("%d: expected %q got %q", expectedHeaders[i], v)
-	   		}
-	   	}
-	*/
+EMBED:
+	expectedHeaders = []string{"Name", "ID", "Addr1", "Addr2", "City", "State", "Zip", "Phone", "Long", "Lat", "Notes", "Stuff"}
+	hdr, err = tc.GetHeaders(TstEmbed{})
+	if err != nil {
+		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
+		return
+	}
+	if len(hdr) != len(expectedHeaders) {
+		t.Errorf("Expected %d column headers, got %d", len(expectedHeaders), len(hdr))
+		t.Errorf("%#v\n", hdr)
+		return
+	}
+	for i, v := range hdr {
+		if v != expectedHeaders[i] {
+			t.Errorf("%d: expected %q got %q", expectedHeaders[i], v)
+		}
+	}
 }

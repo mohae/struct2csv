@@ -50,23 +50,34 @@ func (t *Transcoder) GetHeaders(v interface{}) ([]string, error) {
 }
 
 func (t *Transcoder) getHeaders(v interface{}) ([]string, error) {
-	s := reflect.TypeOf(v)
+	st := reflect.TypeOf(v)
+	sv := reflect.ValueOf(v)
 	var hdrs []string
-	for i := 0; i < s.NumField(); i++ {
-		f := s.Field(i)
+	for i := 0; i < st.NumField(); i++ {
 		// skip unexported
-		if f.PkgPath != "" {
+		ft := st.Field(i)
+		if ft.PkgPath != "" {
 			continue
 		}
-		var name string
-		if t.useTags {
-			name = f.Tag.Get(t.tag)
+		fv := sv.Field(i)
+		switch fv.Kind() {
+		case reflect.Struct:
+			tmp, err := t.getHeaders(fv.Interface())
+			if err != nil {
+				return nil, err
+			}
+			hdrs = append(hdrs, tmp...)
+		default:
+			var name string
+			if t.useTags {
+				name = ft.Tag.Get(t.tag)
+			}
+			// If there isn't a matching field tag, use the Field Name
+			if name == "" {
+				name = ft.Name
+			}
+			hdrs = append(hdrs, name)
 		}
-		// If there isn't a matching field tag, use the Field Name
-		if name == "" {
-			name = f.Name
-		}
-		hdrs = append(hdrs, name)
 	}
 	return hdrs, nil
 }
