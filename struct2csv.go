@@ -4,6 +4,7 @@ package struct2csv
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 )
 
 // Transcoder handles transcoding from a struct to CSV
@@ -11,18 +12,11 @@ type Transcoder struct {
 	// Whether or not tags should be use for header (column) names; by default this is csv,
 	useTags bool
 	tag     string // The tag to use when tags are being used for headers; defaults to csv.
-	csv     [][]byte
 }
 
 // NewTranscoder returns an initialized transcoder
 func NewTranscoder() *Transcoder {
 	return &Transcoder{useTags: true, tag: "csv"}
-}
-
-// SetUseTags sets whether or not tags should be used for header (column)
-// names.
-func (t *Transcoder) SetUseTags(b bool) {
-	t.useTags = b
 }
 
 // SetTag sets the tag that the Transcoder should use for header (column)
@@ -33,6 +27,12 @@ func (t *Transcoder) SetTag(s string) {
 		return
 	}
 	t.tag = s
+}
+
+// SetUseTags sets whether or not tags should be used for header (column)
+// names.
+func (t *Transcoder) SetUseTags(b bool) {
+	t.useTags = b
 }
 
 // GetHeaders get's the column headers from the received struct.  If anything
@@ -67,19 +67,149 @@ func (t *Transcoder) getHeaders(v interface{}) ([]string, error) {
 				return nil, err
 			}
 			hdrs = append(hdrs, tmp...)
-		default:
-			var name string
-			if t.useTags {
-				name = ft.Tag.Get(t.tag)
+			continue
+		case reflect.Chan, reflect.Func:
+			continue
+		case reflect.Array, reflect.Slice:
+			// skip if it's a array/slice of chan or func.
+			switch fv.Type().Elem().Kind() {
+			case reflect.Func, reflect.Chan:
+				continue
 			}
-			// If there isn't a matching field tag, use the Field Name
-			if name == "" {
-				name = ft.Name
-			}
-			hdrs = append(hdrs, name)
 		}
+		var name string
+		if t.useTags {
+			name = ft.Tag.Get(t.tag)
+		}
+		// If there isn't a matching field tag, use the Field Name
+		if name == "" {
+			name = ft.Name
+		}
+		hdrs = append(hdrs, name)
 	}
 	return hdrs, nil
+}
+
+// Marshal takes a slice of structs and returns a [][]byte representing CSV
+// data. Each field in the struct results in a column.  Fields that are slices
+// are stored in a single column as a comma separated list of values.  Fields
+// that are maps are stored in a single column as a comma separted list of
+// key:value pairs.
+//
+// If the passed data isn't a slice of structs or an error occurs during
+// processing, an error will be returned.
+// TODO:
+//    handle pointers
+//    handle map
+//    handle embedded structs
+func (t *Transcoder) Marshal(v interface{}) ([][]string, error) {
+	// must be a slice
+	if reflect.TypeOf(v).Kind() != reflect.Slice {
+		return nil, fmt.Errorf("slice required: value was of type %s", reflect.TypeOf(v).Kind())
+	}
+	// must be a slice of struct
+	vv := reflect.ValueOf(v)
+	if vv.IsNil() {
+		return nil, fmt.Errorf("slice cannot be nil")
+	}
+	if vv.Len() == 0 {
+		return nil, fmt.Errorf("slice must have a length of at least 1: length was 0")
+	}
+	var rows [][]string
+	s := vv.Index(0)
+	switch s.Kind() {
+	case reflect.Struct:
+		hdrs, err := t.getHeaders(s.Interface())
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, hdrs)
+	default:
+		return nil, fmt.Errorf("slice must be of type struct; type was %s", s.Kind().String())
+	}
+	for i := 0; i < vv.Len(); i++ {
+		s := vv.Index(i)
+		switch s.Kind() {
+		case reflect.Struct:
+			row, err := t.marshalItem(s.Interface())
+			if err != nil {
+				return nil, err
+			}
+			rows = append(rows, row)
+		default:
+			return nil, fmt.Errorf("slice must be of type struct; type was %s", s.Kind().String())
+		}
+	}
+	return rows, nil
+}
+
+func (t *Transcoder) marshalItem(v interface{}) ([]string, error) {
+	var row []string
+	val := reflect.ValueOf(v)
+	typ := reflect.TypeOf(v)
+	for i := 0; i < val.NumField(); i++ {
+		if typ.Field(i).PkgPath != "" {
+			continue
+		}
+		f := val.Field(i)
+		switch f.Kind() {
+		case reflect.Bool:
+			row = append(row, strconv.FormatBool(f.Bool()))
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			row = append(row, strconv.Itoa(int(f.Int())))
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			row = append(row, strconv.FormatUint(uint64(f.Uint()), 10))
+		case reflect.Float32:
+			row = append(row, strconv.FormatFloat(f.Float(), 'E', -1, 32))
+		case reflect.Float64:
+			row = append(row, strconv.FormatFloat(f.Float(), 'E', -1, 64))
+		case reflect.Complex64, reflect.Complex128:
+			row = append(row, fmt.Sprintf("%g", f.Complex()))
+		case reflect.Chan, reflect.Func:
+			continue
+		case reflect.Array, reflect.Slice:
+			// skip these
+			switch f.Type().Elem().Kind() {
+			case reflect.Chan, reflect.Func:
+				continue
+			}
+			var trow string
+			var str string
+			// process
+			for j := 0; j < f.Len(); j++ {
+				tmp := f.Index(j)
+				switch tmp.Kind() {
+				case reflect.Bool:
+					str = strconv.FormatBool(tmp.Bool())
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+					str = strconv.Itoa(int(tmp.Int()))
+				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+					str = strconv.FormatUint(uint64(tmp.Uint()), 10)
+				case reflect.Float32:
+					str = strconv.FormatFloat(tmp.Float(), 'E', -1, 32)
+				case reflect.Float64:
+					str = strconv.FormatFloat(tmp.Float(), 'E', -1, 64)
+				case reflect.Complex64, reflect.Complex128:
+					str = fmt.Sprintf("%g", tmp.Complex())
+				case reflect.String:
+					str = tmp.String()
+				default:
+					return nil, fmt.Errorf("slice type not supported: %s", tmp.Kind().String())
+				}
+				if j == 0 {
+					trow = str
+					continue
+				}
+				trow = fmt.Sprintf("%s, %s", trow, str)
+			}
+			row = append(row, trow)
+		case reflect.String:
+			row = append(row, f.String())
+		default:
+			return nil, fmt.Errorf("%#v's type not supported: %s", f, f.Kind().String())
+		}
+	}
+	return row, nil
 }
 
 // GetHeaders instantiates a Transcoder and gets the headers of the received
