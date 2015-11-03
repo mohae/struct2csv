@@ -35,16 +35,16 @@ type TstTags struct {
 type TstEmbed struct {
 	Name string
 	Location
-	Notes
-	Stuff
+	//	Notes
+	//	Stuff
 }
 
 type Location struct {
 	ID int
 	Address
 	Phone string
-	Long  string
 	Lat   string
+	Long  string
 }
 
 type Address struct {
@@ -56,7 +56,7 @@ type Address struct {
 }
 
 type Notes map[string]string
-type Stuff []string
+type Stuff map[string]string
 
 func TestNewTranscoder(t *testing.T) {
 	tc := NewTranscoder()
@@ -170,7 +170,7 @@ JSONTAG:
 	}
 
 EMBED:
-	expectedHeaders = []string{"Name", "ID", "Addr1", "Addr2", "City", "State", "Zip", "Phone", "Long", "Lat", "Notes", "Stuff"}
+	expectedHeaders = []string{"Name", "ID", "Addr1", "Addr2", "City", "State", "Zip", "Phone", "Lat", "Long", "Notes", "Stuff"}
 	hdr, err = tc.GetHeaders(TstEmbed{})
 	if err != nil {
 		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
@@ -483,4 +483,76 @@ BASIC:
 		}
 	}
 EMBED:
+}
+
+func TestMarshalStructs(t *testing.T) {
+	Tsts := []TstEmbed{
+		TstEmbed{
+			Name: "United Center",
+			Location: Location{
+				ID: 1,
+				Address: Address{
+					Addr1: "1901 W. Madison St.",
+					City:  "Chicago",
+					State: "IL",
+					Zip:   "60612",
+				},
+				Phone: "(312) 455-4500",
+				Lat:   "41.8806",
+				Long:  "-87.6742",
+			},
+			//			Notes: map[string]string{"NHL": "Blackhawks", "NBA": "Bulls"},
+		},
+		TstEmbed{
+			Name: "Wrigley Field",
+			Location: Location{
+				ID: 1906,
+				Address: Address{
+					Addr1: "1060 W. Addison St.",
+					Addr2: "Broadcast Booth",
+					City:  "Chicago",
+					State: "IL",
+					Zip:   "60613",
+				},
+				Phone: "(773) 404-2827",
+				Lat:   "41.9483",
+				Long:  "-87.6556",
+			},
+			//			Notes: map[string]string{"MLB": "Cubs"},
+			//			Stuff: map[string]string{"Jack Brickhouse": "Hey Hey", "Harry Carry": "Holy Cow"},
+		},
+	}
+	expected := [][]string{
+		//		[]string{"Name", "ID", "Addr1", "Addr2", "City", "State", "Zip", "Phone", "Lat", "Long", "Notes", "Stuff"},
+		//		[]string{"United Center", "1", "1901 W. Madison St.", "", "Chicago", "IL", "60612",
+		//			"(312) 455-4500", "41.8806", "-87.6742", "NHL:Blackhawks, NBA:Bulls", ""},
+		//		[]string{"Wrigley Field", "1906", "1060 W. Addison St.", "Broadcast Booth", "Chicago", "IL", "60613",
+		//			"(773) 404-2827", "41.9483", "-87.6556", "MBL:Cubs", "Jack Brickhouse:Hey Hey, Harry Caray:Holy Cow"},
+		[]string{"Name", "ID", "Addr1", "Addr2", "City", "State", "Zip", "Phone", "Lat", "Long"},
+		[]string{"United Center", "1", "1901 W. Madison St.", "", "Chicago", "IL", "60612",
+			"(312) 455-4500", "41.8806", "-87.6742"},
+		[]string{"Wrigley Field", "1906", "1060 W. Addison St.", "Broadcast Booth", "Chicago", "IL", "60613",
+			"(773) 404-2827", "41.9483", "-87.6556"},
+	}
+	tc := NewTranscoder()
+	rows, err := tc.Marshal(Tsts)
+	if err != nil {
+		t.Errorf("did not expect an error: got %q", err)
+		return
+	}
+	if len(rows) != len(expected) {
+		t.Errorf("Expected %d rows of data, got %d", len(expected), len(rows))
+		return
+	}
+	for i, row := range rows {
+		if len(row) != len(expected[i]) {
+			t.Errorf("Expected row to have %d columns, got %d", len(expected[i]), len(row))
+			continue
+		}
+		for j, col := range row {
+			if col != expected[i][j] {
+				t.Errorf("Expected col value to be %q, got %q", expected[i][j], col)
+			}
+		}
+	}
 }

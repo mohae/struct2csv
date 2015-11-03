@@ -203,8 +203,15 @@ func (t *Transcoder) marshalItem(v interface{}) ([]string, error) {
 				trow = fmt.Sprintf("%s, %s", trow, str)
 			}
 			row = append(row, trow)
+
 		case reflect.String:
 			row = append(row, f.String())
+		case reflect.Struct:
+			trow, err := t.marshalItem(f.Interface())
+			if err != nil {
+				return nil, err
+			}
+			row = append(row, trow...)
 		default:
 			return nil, fmt.Errorf("%#v's type not supported: %s", f, f.Kind().String())
 		}
