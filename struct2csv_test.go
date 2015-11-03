@@ -188,7 +188,7 @@ EMBED:
 	}
 }
 
-type TM struct {
+type TTypes struct {
 	Bool        bool
 	Bools       []bool
 	ABool       [2]bool
@@ -248,8 +248,8 @@ type TM struct {
 }
 
 func TestMarshal(t *testing.T) {
-	tsts := []TM{
-		TM{
+	tsts := []TTypes{
+		TTypes{
 			Bool:        true,
 			Bools:       []bool{true, false, true},
 			ABool:       [2]bool{true, false},
@@ -307,7 +307,7 @@ func TestMarshal(t *testing.T) {
 			AString:     [2]string{"pangalactic", "gargleblaster"},
 			strings:     []string{"hello"},
 		},
-		TM{
+		TTypes{
 			Bool:        true,
 			Bools:       []bool{true, true, false},
 			ABool:       [2]bool{true, false},
@@ -428,44 +428,43 @@ func TestMarshal(t *testing.T) {
 		t.Error("Expected an error, got none")
 	}
 NILSLICE:
-	/*
-	   	var sl []string
-	   	data, err = tc.Marshal(sl)
-	   	if err != nil {
-	   		if err.Error() != "slice cannot be nil" {
-	   			t.Errorf("Expected \"slice cannot be nil\", got %q", err)
-	   		}
-	   		goto ZEROSLICE
-	   	}
-	   	if err == nil {
-	   		t.Error("Expected an error, got none")
-	   	}
-	   ZEROSLICE:
-	   	sl = make([]string, 0)
-	   	data, err = tc.Marshal(sl)
-	   	if err != nil {
-	   		if err.Error() != "slice must have a length of at least 1: length was 0" {
-	   			t.Errorf("Expected \"slice must have a length of at least 1: length was 0\", got %q", err)
-	   		}
-	   		goto NONSTRUCT
-	   	}
-	   	if err == nil {
-	   		t.Error("Expected an error, got none")
-	   	}
-	   NONSTRUCT:
-	   	sl = []string{"hello", "world"}
-	   	data, err = tc.Marshal(sl)
-	   	if err != nil {
-	   		if err.Error() != "slice must be of type struct; type was string" {
-	   			t.Errorf("Expected \"slice must be of type struct; type was string\", %q", err)
-	   		}
-	   		goto BASIC
-	   	}
-	   	if err == nil {
-	   		t.Error("Expected an error, got none")
-	   	}
-	   BASIC:
-	*/
+	var sl []string
+	data, err = tc.Marshal(sl)
+	if err != nil {
+		if err.Error() != "slice cannot be nil" {
+			t.Errorf("Expected \"slice cannot be nil\", got %q", err)
+		}
+		goto ZEROSLICE
+	}
+	if err == nil {
+		t.Error("Expected an error, got none")
+	}
+ZEROSLICE:
+	sl = make([]string, 0)
+	data, err = tc.Marshal(sl)
+	if err != nil {
+		if err.Error() != "slice must have a length of at least 1: length was 0" {
+			t.Errorf("Expected \"slice must have a length of at least 1: length was 0\", got %q", err)
+		}
+		goto NONSTRUCT
+	}
+	if err == nil {
+		t.Error("Expected an error, got none")
+	}
+NONSTRUCT:
+	sl = []string{"hello", "world"}
+	data, err = tc.Marshal(sl)
+	if err != nil {
+		if err.Error() != "slice must be of type struct; type was string" {
+			t.Errorf("Expected \"slice must be of type struct; type was string\", %q", err)
+		}
+		goto BASIC
+	}
+	if err == nil {
+		t.Error("Expected an error, got none")
+	}
+BASIC:
+
 	data, err = tc.Marshal(tsts)
 	if err != nil {
 		t.Errorf("expected no error, got %q", err)
