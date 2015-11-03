@@ -174,27 +174,11 @@ func (t *Transcoder) marshalItem(v interface{}) ([]string, error) {
 				continue
 			}
 			var trow string
-			var str string
 			// process
 			for j := 0; j < f.Len(); j++ {
-				tmp := f.Index(j)
-				switch tmp.Kind() {
-				case reflect.Bool:
-					str = strconv.FormatBool(tmp.Bool())
-				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-					str = strconv.Itoa(int(tmp.Int()))
-				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-					str = strconv.FormatUint(uint64(tmp.Uint()), 10)
-				case reflect.Float32:
-					str = strconv.FormatFloat(tmp.Float(), 'E', -1, 32)
-				case reflect.Float64:
-					str = strconv.FormatFloat(tmp.Float(), 'E', -1, 64)
-				case reflect.Complex64, reflect.Complex128:
-					str = fmt.Sprintf("%g", tmp.Complex())
-				case reflect.String:
-					str = tmp.String()
-				default:
-					return nil, fmt.Errorf("slice type not supported: %s", tmp.Kind().String())
+				str, err := t.stringify(f.Index(j))
+				if err != nil {
+					return nil, err
 				}
 				if j == 0 {
 					trow = str
@@ -203,7 +187,12 @@ func (t *Transcoder) marshalItem(v interface{}) ([]string, error) {
 				trow = fmt.Sprintf("%s, %s", trow, str)
 			}
 			row = append(row, trow)
-
+		case reflect.Map:
+			col, err := t.marshalMap(f.Interface())
+			if err != nil {
+				return nil, err
+			}
+			row = append(row, col)
 		case reflect.String:
 			row = append(row, f.String())
 		case reflect.Struct:
@@ -219,6 +208,56 @@ func (t *Transcoder) marshalItem(v interface{}) ([]string, error) {
 	return row, nil
 }
 
+// marshal map handles marshalling of maps
+func (t *Transcoder) marshalMap(v interface{}) (string, error) {
+	var row string
+	m := reflect.ValueOf(v)
+	if m.Kind() != reflect.Map {
+		return "", fmt.Errorf("map expected: type was %s", m.Kind().String())
+	}
+	keys := m.MapKeys()
+	for i, key := range keys {
+		val := m.MapIndex(key)
+		k, err := t.stringify(key)
+		if err != nil {
+			return "", err
+		}
+		v, err := t.stringify(val)
+		if err != nil {
+			return "", err
+		}
+		if i == 0 {
+			row = fmt.Sprintf("%s:%s", k, v)
+			continue
+		}
+		row = fmt.Sprintf("%s, %s:%s", row, k, v)
+	}
+	return row, nil
+}
+
+// stringify takes a interface and returns the value it contains as a string.
+// This is not ment for composite types.  If the type is not supported, an
+// error will be returned.
+func (t *Transcoder) stringify(v reflect.Value) (string, error) {
+	switch v.Kind() {
+	case reflect.Bool:
+		return strconv.FormatBool(v.Bool()), nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return strconv.Itoa(int(v.Int())), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return strconv.FormatUint(uint64(v.Uint()), 10), nil
+	case reflect.Float32:
+		return strconv.FormatFloat(v.Float(), 'E', -1, 32), nil
+	case reflect.Float64:
+		return strconv.FormatFloat(v.Float(), 'E', -1, 64), nil
+	case reflect.Complex64, reflect.Complex128:
+	 	return fmt.Sprintf("%g", v.Complex()), nil
+	case reflect.String:
+		return v.String(), nil
+	default:
+		return "", fmt.Errorf("stringify: type not supported: %s", v.Kind().String())
+	}
+}
 // GetHeaders instantiates a Transcoder and gets the headers of the received
 // struct.  If you need more control over tag processing, use NewTranscoder(),
 // set accordingly, and call Transcoder's GetHeaders().

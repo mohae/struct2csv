@@ -2,10 +2,8 @@ package struct2csv
 
 import (
 	"fmt"
-	_ "os"
+	"strings"
 	"testing"
-
-	_ "github.com/mohae/customjson"
 )
 
 type Tst struct {
@@ -35,8 +33,8 @@ type TstTags struct {
 type TstEmbed struct {
 	Name string
 	Location
-	//	Notes
-	//	Stuff
+	Notes
+	Stuff
 }
 
 type Location struct {
@@ -501,7 +499,7 @@ func TestMarshalStructs(t *testing.T) {
 				Lat:   "41.8806",
 				Long:  "-87.6742",
 			},
-			//			Notes: map[string]string{"NHL": "Blackhawks", "NBA": "Bulls"},
+			Notes: map[string]string{"NHL": "Blackhawks", "NBA": "Bulls"},
 		},
 		TstEmbed{
 			Name: "Wrigley Field",
@@ -518,21 +516,16 @@ func TestMarshalStructs(t *testing.T) {
 				Lat:   "41.9483",
 				Long:  "-87.6556",
 			},
-			//			Notes: map[string]string{"MLB": "Cubs"},
-			//			Stuff: map[string]string{"Jack Brickhouse": "Hey Hey", "Harry Carry": "Holy Cow"},
+			Notes: map[string]string{"MLB": "Cubs"},
+			Stuff: map[string]string{"Jack Brickhouse": "Hey Hey", "Harry Caray": "Holy Cow"},
 		},
 	}
 	expected := [][]string{
-		//		[]string{"Name", "ID", "Addr1", "Addr2", "City", "State", "Zip", "Phone", "Lat", "Long", "Notes", "Stuff"},
-		//		[]string{"United Center", "1", "1901 W. Madison St.", "", "Chicago", "IL", "60612",
-		//			"(312) 455-4500", "41.8806", "-87.6742", "NHL:Blackhawks, NBA:Bulls", ""},
-		//		[]string{"Wrigley Field", "1906", "1060 W. Addison St.", "Broadcast Booth", "Chicago", "IL", "60613",
-		//			"(773) 404-2827", "41.9483", "-87.6556", "MBL:Cubs", "Jack Brickhouse:Hey Hey, Harry Caray:Holy Cow"},
-		[]string{"Name", "ID", "Addr1", "Addr2", "City", "State", "Zip", "Phone", "Lat", "Long"},
+		[]string{"Name", "ID", "Addr1", "Addr2", "City", "State", "Zip", "Phone", "Lat", "Long", "Notes", "Stuff"},
 		[]string{"United Center", "1", "1901 W. Madison St.", "", "Chicago", "IL", "60612",
-			"(312) 455-4500", "41.8806", "-87.6742"},
+			"(312) 455-4500", "41.8806", "-87.6742", "NHL:Blackhawks, NBA:Bulls", ""},
 		[]string{"Wrigley Field", "1906", "1060 W. Addison St.", "Broadcast Booth", "Chicago", "IL", "60613",
-			"(773) 404-2827", "41.9483", "-87.6556"},
+			"(773) 404-2827", "41.9483", "-87.6556", "MLB:Cubs", "Jack Brickhouse:Hey Hey, Harry Caray:Holy Cow"},
 	}
 	tc := NewTranscoder()
 	rows, err := tc.Marshal(Tsts)
@@ -550,6 +543,23 @@ func TestMarshalStructs(t *testing.T) {
 			continue
 		}
 		for j, col := range row {
+			// these are map values so the order may change
+			if j == 11 || j == 12 {
+				tmp := strings.Split(col, ", ")
+				exp := strings.Split(expected[i][j], ", ")
+				if len(tmp) != len(exp) {
+					t.Errorf("expected %q, got %q", expected[i][j], col)
+				}
+				for _, tv := range tmp {
+					for _, xp := range exp {
+						if tv == xp {
+							goto FOUND
+						}
+					}
+					t.Errorf("expected %q, got %q", expected[i][j], col)
+FOUND:
+				}
+			}
 			if col != expected[i][j] {
 				t.Errorf("Expected col value to be %q, got %q", expected[i][j], col)
 			}
