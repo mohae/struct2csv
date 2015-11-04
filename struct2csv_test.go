@@ -145,6 +145,13 @@ type PtrTypes struct {
 	String      *string
 	Strings     []*string
 	strings     []*string
+	BoolM map[string]*bool
+	IntM map[string]*int
+	Float64M map[string]*float64
+	Complex128M map[int]*complex128
+	ChanM map[string]*chan string
+	FuncM map[string]*func()
+	StringM map[string]*string
 }
 
 func TestNew(t *testing.T) {
@@ -700,8 +707,9 @@ func TestPtrs(t *testing.T) {
 	}
 	expected := [][]string{
 		[]string{"Bool", "Bools", "Int", "Ints", "Uint", "Uints", "Float64", "Float64s",
-			"Complex128", "Complex128s", "String", "Strings"},
-		[]string{"false", "", "0", "", "0", "", "0+E00", "", "(0+0i)", "", "", ""},
+			"Complex128", "Complex128s", "String", "Strings",
+			"BoolM", "IntM", "Float64M", "Complex128M", "StringM"},
+		[]string{"false", "", "0", "", "0", "", "0+E00", "", "(0+0i)", "", "", "", "", "", "", ""},
 	}
 //	pbool(tst[0].Bool, true)
 //	pbool(tst[0].Bools[0], true)
@@ -713,6 +721,7 @@ func TestPtrs(t *testing.T) {
 //	pfunc(tst[0].Funcs[0])
 	tc := New()
 	data, err := tc.Marshal(tst)
+	t.Errorf("\n%#v\n%#v\n", expected, data)
 	if err != nil {
 		t.Errorf("unexpected err: %q", err)
 	}
@@ -765,7 +774,15 @@ func StringParts(s string) []string {
 	return parts
 
 }
+/*
+func TestGetValueSliceType(t * testing.T) {
+	v := interface{}(map[string]int{})
+	val := reflect.ValueOf(v)
+	keys := val.MapKeys()
+	t.Errorf("%#v\n", getKeyType(keys).String())
 
+}
+*/
 // funcs to set pointers
 func pbool(p *bool, v bool) {
 	*p = v

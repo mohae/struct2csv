@@ -82,6 +82,17 @@ func (t *Transcoder) getHeaders(v interface{}) ([]string, error) {
 					continue
 				}
 			}
+		case reflect.Map:
+			// skip if it's a array/slice of chan or func.
+			switch fv.Type().Elem().Kind() {
+			case reflect.Func, reflect.Chan:
+				continue
+			case reflect.Ptr:
+				switch fv.Type().Elem().Elem().Kind(){
+				case reflect.Func, reflect.Chan:
+					continue
+				}
+			}
 		case reflect.Ptr:
 			switch fv.Type().Elem().Kind() {
 			case reflect.Func, reflect.Chan, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
@@ -234,10 +245,20 @@ func (t *Transcoder) marshalMap(v interface{}) (string, error) {
 	if m.Kind() != reflect.Map {
 		return "", fmt.Errorf("map expected: type was %s", m.Kind().String())
 	}
-	keys := m.MapKeys()
-	if len(keys) == 0 {
-		return "", nil
+	//  TODO add support for checking unsupported key types and handle, e.g. func & chan
+	// a map may be nil but we still need to know its key and value types.
+	//mz := reflect.Zero(m.Type().Key())
+	// check to see if the value is supported:
+	switch reflect.Zero(m.Type().Elem()).Kind(){
+	case reflect.Chan, reflect.Func:
+		return fmt.Sprintf("unsupported value type %q", reflect.Zero(m.Type().Elem()).Kind()), nil
+	case reflect.Ptr:
+		switch reflect.Zero(m.Type().Elem().Elem()).Kind() {
+		case reflect.Func, reflect.Chan:
+			return fmt.Sprintf("unsupported value type %q", reflect.Zero(m.Type().Elem().Elem()).Kind()), nil
+		}
 	}
+	keys := m.MapKeys()
 	for i, key := range keys {
 		val := m.MapIndex(key)
 		k, err := t.stringify(key)
@@ -246,6 +267,17 @@ func (t *Transcoder) marshalMap(v interface{}) (string, error) {
 		}
 		switch val.Kind() {
 		case reflect.Map:
+			// skip if it's a map of chan or func.
+			switch val.Type().Elem().Kind() {
+			case reflect.Func, reflect.Chan:
+				continue
+			case reflect.Ptr:
+				fmt.Println("data map key ptr: ", val.Type().Elem().Elem().Kind())
+				switch val.Type().Elem().Elem().Kind(){
+				case reflect.Func, reflect.Chan:
+					continue
+				}
+			}
 			tmp, err := t.marshalMap(val.Interface())
 			if err != nil {
 				return "", err
@@ -291,6 +323,7 @@ func (t *Transcoder) marshalMap(v interface{}) (string, error) {
 		case reflect.Chan, reflect.Func, reflect.Uintptr, reflect.UnsafePointer, reflect.Interface:
 			continue
 		case reflect.Ptr:
+			fmt.Println("map value ptr: ", val.Type().Elem().Kind())
 		continue
 		}
 		v, err := t.stringify(val)
@@ -382,3 +415,13 @@ func GetHeaders(v interface{}) ([]string, error) {
 	tc := New()
 	return tc.GetHeaders(v)
 }
+/*
+func getKeyType(k []reflect.Value) reflect.Kind {
+	if len(k) > 0 {
+		return k[0].Type().Kind()
+	}
+	// parse the string value to determine Kind
+	fmt.Println()
+	return reflect.Map
+}
+*/
