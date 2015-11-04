@@ -19,20 +19,20 @@ This is an initial implementation.
     import github.com/mohae/struct2csv
 
     var data []MyStruct
-    tc := struct2csv.New()
-    rows, err := tc.Marshal(data)
+    enc := struct2csv.New()
+    rows, err := enc.Marshal(data)
     if err != nil {
         // handle error
     }
 
-### Configuration of Transcoder
-By default, a transcoder will use tag fields with the tag `csv`, if they exist, as the column header value for a field. If such a tag does not exist, the column name will be used.
+### Configuration of an Encoder
+By default, an encoder will use tag fields with the tag `csv`, if they exist, as the column header value for a field. If such a tag does not exist, the column name will be used.
 
-The tag that the transcoder uses can be changed by calling `Transcoder.SetTag(value)`.
+The tag that the encoder uses can be changed by calling `Encoder.SetTag(value)`.
 
-Tags can be ignored by calling `Transcoder.SetUseTag(false)`.  This will result in the struct field names being used as the colmn header values.
+Tags can be ignored by calling `Encoder.SetUseTag(false)`.  This will result in the struct field names being used as the colmn header values.
 
-More customization of transcoder's behavior may be added.
+More customization of the encoder's behavior may be added.
 
 ## Supported types
 The following `reflect.Kind` are supported:  
@@ -78,7 +78,7 @@ UnsafePointer
 Pointers have not yet been implemented.
 
 ### Embedded types
-If a type is embeded, any exported fields within that struct become their own columns with the field name being the column name, unless a field tag has been defined.  The name of the embedded struct does not become part of the column header name.
+If a type is embedded, any exported fields within that struct become their own columns with the field name being the column name, unless a field tag has been defined.  The name of the embedded struct does not become part of the column header name.
 
 ### Maps, Slices, and Arrays
 #### Map

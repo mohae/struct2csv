@@ -8,32 +8,32 @@ import (
 	"strings"
 )
 
-// Transcoder handles transcoding from a struct to CSV
-type Transcoder struct {
+// Encoder handles encoding of a CSV from a struct.
+type Encoder struct {
 	// Whether or not tags should be use for header (column) names; by default this is csv,
 	useTags bool
 	tag     string // The tag to use when tags are being used for headers; defaults to csv.
 }
 
-// New returns an initialized transcoder
-func New() *Transcoder {
-	return &Transcoder{useTags: true, tag: "csv"}
+// New returns an initialized Encoder.
+func New() *Encoder {
+	return &Encoder{useTags: true, tag: "csv"}
 }
 
-// SetTag sets the tag that the Transcoder should use for header (column)
+// SetTag sets the tag that the Encoder should use for header (column)
 // names.  By default, this is set to 'csv'.  If the received value is an
 // empty string, nothing will be done
-func (t *Transcoder) SetTag(s string) {
+func (e *Encoder) SetTag(s string) {
 	if s == "" {
 		return
 	}
-	t.tag = s
+	e.tag = s
 }
 
 // SetUseTags sets whether or not tags should be used for header (column)
 // names.
-func (t *Transcoder) SetUseTags(b bool) {
-	t.useTags = b
+func (e *Encoder) SetUseTags(b bool) {
+	e.useTags = b
 }
 
 // GetHeaders get's the column headers from the received struct.  If anything
@@ -43,14 +43,14 @@ func (t *Transcoder) SetUseTags(b bool) {
 //
 // If field tags other than the ones for csv are to be used, TODO figure out
 // the struct and how to implement this comment.
-func (t *Transcoder) GetHeaders(v interface{}) ([]string, error) {
+func (e *Encoder) GetHeaders(v interface{}) ([]string, error) {
 	if reflect.TypeOf(v).Kind() != reflect.Struct {
 		return nil, fmt.Errorf("struct required: value was of type %s", reflect.TypeOf(v).Kind())
 	}
-	return t.getHeaders(v)
+	return e.getHeaders(v)
 }
 
-func (t *Transcoder) getHeaders(v interface{}) ([]string, error) {
+func (e *Encoder) getHeaders(v interface{}) ([]string, error) {
 	st := reflect.TypeOf(v)
 	sv := reflect.ValueOf(v)
 	var hdrs []string
@@ -63,7 +63,7 @@ func (t *Transcoder) getHeaders(v interface{}) ([]string, error) {
 		fv := sv.Field(i)
 		switch fv.Kind() {
 		case reflect.Struct:
-			tmp, err := t.getHeaders(fv.Interface())
+			tmp, err := e.getHeaders(fv.Interface())
 			if err != nil {
 				return nil, err
 			}
@@ -100,8 +100,8 @@ func (t *Transcoder) getHeaders(v interface{}) ([]string, error) {
 			}
 		}
 		var name string
-		if t.useTags {
-			name = ft.Tag.Get(t.tag)
+		if e.useTags {
+			name = ft.Tag.Get(e.tag)
 		}
 		// If there isn't a matching field tag, use the Field Name
 		if name == "" {
@@ -122,7 +122,7 @@ func (t *Transcoder) getHeaders(v interface{}) ([]string, error) {
 // processing, an error will be returned.
 // TODO:
 //    handle pointers
-func (t *Transcoder) Marshal(v interface{}) ([][]string, error) {
+func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 	// must be a slice
 	if reflect.TypeOf(v).Kind() != reflect.Slice {
 		return nil, fmt.Errorf("slice required: value was of type %s", reflect.TypeOf(v).Kind())
@@ -139,7 +139,7 @@ func (t *Transcoder) Marshal(v interface{}) ([][]string, error) {
 	s := vv.Index(0)
 	switch s.Kind() {
 	case reflect.Struct:
-		hdrs, err := t.getHeaders(s.Interface())
+		hdrs, err := e.getHeaders(s.Interface())
 		if err != nil {
 			return nil, err
 		}
@@ -151,7 +151,7 @@ func (t *Transcoder) Marshal(v interface{}) ([][]string, error) {
 		s := vv.Index(i)
 		switch s.Kind() {
 		case reflect.Struct:
-			row, err := t.marshalStruct(s.Interface())
+			row, err := e.marshalStruct(s.Interface())
 			if err != nil {
 				return nil, err
 			}
@@ -163,7 +163,7 @@ func (t *Transcoder) Marshal(v interface{}) ([][]string, error) {
 	return rows, nil
 }
 
-func (t *Transcoder) marshalStruct(v interface{}) ([]string, error) {
+func (e *Encoder) marshalStruct(v interface{}) ([]string, error) {
 	var row []string
 	val := reflect.ValueOf(v)
 	typ := reflect.TypeOf(v)
@@ -198,13 +198,13 @@ func (t *Transcoder) marshalStruct(v interface{}) ([]string, error) {
 					continue
 				}
 			}
-			trow, err := t.marshalSlice(f)
+			trow, err := e.marshalSlice(f)
 			if err != nil {
 				return nil, err
 			}
 			row = append(row, trow)
 		case reflect.Map:
-			col, err := t.marshalMap(f.Interface())
+			col, err := e.marshalMap(f.Interface())
 			if err != nil {
 				return nil, err
 			}
@@ -212,7 +212,7 @@ func (t *Transcoder) marshalStruct(v interface{}) ([]string, error) {
 		case reflect.String:
 			row = append(row, f.String())
 		case reflect.Struct:
-			trow, err := t.marshalStruct(f.Interface())
+			trow, err := e.marshalStruct(f.Interface())
 			if err != nil {
 				return nil, err
 			}
@@ -226,7 +226,7 @@ func (t *Transcoder) marshalStruct(v interface{}) ([]string, error) {
 			if !val.IsValid() {
 				continue
 			}
-			tmp, err := t.stringify(val)
+			tmp, err := e.stringify(val)
 			if err != nil {
 				return nil, err
 			}
@@ -239,7 +239,7 @@ func (t *Transcoder) marshalStruct(v interface{}) ([]string, error) {
 }
 
 // marshal map handles marshalling of maps
-func (t *Transcoder) marshalMap(v interface{}) (string, error) {
+func (e *Encoder) marshalMap(v interface{}) (string, error) {
 	var row string
 	m := reflect.ValueOf(v)
 	if m.Kind() != reflect.Map {
@@ -261,7 +261,7 @@ func (t *Transcoder) marshalMap(v interface{}) (string, error) {
 	keys := m.MapKeys()
 	for i, key := range keys {
 		val := m.MapIndex(key)
-		k, err := t.stringify(key)
+		k, err := e.stringify(key)
 		if err != nil {
 			return "", err
 		}
@@ -278,7 +278,7 @@ func (t *Transcoder) marshalMap(v interface{}) (string, error) {
 					continue
 				}
 			}
-			tmp, err := t.marshalMap(val.Interface())
+			tmp, err := e.marshalMap(val.Interface())
 			if err != nil {
 				return "", err
 			}
@@ -289,7 +289,7 @@ func (t *Transcoder) marshalMap(v interface{}) (string, error) {
 			}
 			continue
 		case reflect.Array, reflect.Slice:
-			tmp, err := t.marshalSlice(val)
+			tmp, err := e.marshalSlice(val)
 			if err != nil {
 				return "", err
 			}
@@ -300,14 +300,14 @@ func (t *Transcoder) marshalMap(v interface{}) (string, error) {
 			}
 			continue
 		case reflect.Struct:
-			tmp, err := t.marshalStruct(val.Interface())
+			tmp, err := e.marshalStruct(val.Interface())
 			if err != nil {
 				return "", err
 			}
 			var trow string
 			for j, v := range tmp {
 				// if this is a list, put it in brackets
-				v = t.formatList(v)
+				v = e.formatList(v)
 				if j == 0 {
 					trow = v
 				} else {
@@ -326,7 +326,7 @@ func (t *Transcoder) marshalMap(v interface{}) (string, error) {
 			fmt.Println("map value ptr: ", val.Type().Elem().Kind())
 		continue
 		}
-		v, err := t.stringify(val)
+		v, err := e.stringify(val)
 		if err != nil {
 			return "", err
 		}
@@ -340,18 +340,18 @@ func (t *Transcoder) marshalMap(v interface{}) (string, error) {
 }
 
 // marshalSlice handles marshaling of slices
-func (t *Transcoder) marshalSlice(v reflect.Value) (string, error) {
+func (e *Encoder) marshalSlice(v reflect.Value) (string, error) {
 	var sl, str string
 	var err error
 	for j := 0; j < v.Len(); j++ {
 		switch v.Index(j).Kind() {
 		case reflect.Struct:
-			tmp, err := t.marshalStruct(v.Index(j).Interface())
+			tmp, err := e.marshalStruct(v.Index(j).Interface())
 			if err != nil {
 				return "", err
 			}
 			for i, v := range tmp {
-				v = t.formatList(v)
+				v = e.formatList(v)
 				if i == 0 {
 					str = v
 					continue
@@ -361,7 +361,7 @@ func (t *Transcoder) marshalSlice(v reflect.Value) (string, error) {
 		case reflect.Ptr:
 			continue
 		default:
-			str, err = t.stringify(v.Index(j))
+			str, err = e.stringify(v.Index(j))
 			if err != nil {
 				return "", err
 			}
@@ -378,7 +378,7 @@ func (t *Transcoder) marshalSlice(v reflect.Value) (string, error) {
 // stringify takes a interface and returns the value it contains as a string.
 // This is not ment for composite types.  If the type is not supported, an
 // error will be returned.
-func (t *Transcoder) stringify(v reflect.Value) (string, error) {
+func (e *Encoder) stringify(v reflect.Value) (string, error) {
 	switch v.Kind() {
 	case reflect.Bool:
 		return strconv.FormatBool(v.Bool()), nil
@@ -401,16 +401,16 @@ func (t *Transcoder) stringify(v reflect.Value) (string, error) {
 
 // formatList takes a string and adds brackets to the beginning and end of it
 // if the string contains ", ".  Otherwise it is returned unmodified.
-func (t *Transcoder) formatList(s string) string {
+func (e *Encoder) formatList(s string) string {
 	if strings.Index(s, ", ") > 0 {
 		return fmt.Sprintf("[%s]", s)
 	}
 	return s
 }
 
-// GetHeaders instantiates a Transcoder and gets the headers of the received
+// GetHeaders instantiates a Encoder and gets the headers of the received
 // struct.  If you need more control over tag processing, use New(),
-// set accordingly, and call Transcoder's GetHeaders().
+// set accordingly, and call Encoder's GetHeaders().
 func GetHeaders(v interface{}) ([]string, error) {
 	tc := New()
 	return tc.GetHeaders(v)
