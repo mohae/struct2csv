@@ -56,6 +56,77 @@ type Address struct {
 type Notes map[string]string
 type Stuff map[string]string
 
+type Basic struct {
+	Name string
+	List []string
+}
+
+type Structor struct {
+	ValueMapMap   map[string]map[string]string
+	ValueMapSlice map[string][]string
+	BasicMap map[string]Basic
+	BasicSlice map[string][]Basic
+}
+
+type TTypes struct {
+	Bool        bool
+	Bools       []bool
+	ABool       [2]bool
+	Int         int
+	Ints        []int
+	AInt        [2]int
+	ints        []int
+	Int8        int8
+	Int8s       []int8
+	AInt8       [2]int8
+	Int16       int16
+	Int16s      []int16
+	AInt16      [2]int16
+	Int32       int32
+	Int32s      []int32
+	AInt32      [2]int32
+	Int64       int64
+	Int64s      []int64
+	AInt64      [2]int64
+	Uint        uint
+	Uints       []uint
+	AUint       [2]uint
+	Uint8       uint8
+	Uint8s      []uint8
+	AUint8      [2]uint8
+	Uint16      uint16
+	Uint16s     []uint16
+	AUint16     [2]uint16
+	Uint32      uint32
+	Uint32s     []uint32
+	AUint32     [2]uint32
+	Uint64      uint64
+	Uint64s     []uint64
+	AUint64     [2]uint64
+	Float32     float32
+	Float32s    []float32
+	AFloat32    [2]float32
+	Float64     float64
+	Float64s    []float64
+	AFloat64    [2]float64
+	Complex64   complex64
+	Complex64s  []complex64
+	AComplex64  [2]complex64
+	Complex128  complex128
+	Complex128s []complex128
+	AComplex128 [2]complex128
+	Chan        chan int
+	Chans       []chan int
+	AChan       [2]chan int
+	Func        func()
+	Funcs       []func()
+	AFunc       [2]func()
+	String      string
+	Strings     []string
+	AString     [2]string
+	strings     []string
+}
+
 func TestNew(t *testing.T) {
 	tc := New()
 	if tc.useTags != true {
@@ -184,65 +255,6 @@ EMBED:
 			t.Errorf("%d: expected %q got %q", i, expectedHeaders[i], v)
 		}
 	}
-}
-
-type TTypes struct {
-	Bool        bool
-	Bools       []bool
-	ABool       [2]bool
-	Int         int
-	Ints        []int
-	AInt        [2]int
-	ints        []int
-	Int8        int8
-	Int8s       []int8
-	AInt8       [2]int8
-	Int16       int16
-	Int16s      []int16
-	AInt16      [2]int16
-	Int32       int32
-	Int32s      []int32
-	AInt32      [2]int32
-	Int64       int64
-	Int64s      []int64
-	AInt64      [2]int64
-	Uint        uint
-	Uints       []uint
-	AUint       [2]uint
-	Uint8       uint8
-	Uint8s      []uint8
-	AUint8      [2]uint8
-	Uint16      uint16
-	Uint16s     []uint16
-	AUint16     [2]uint16
-	Uint32      uint32
-	Uint32s     []uint32
-	AUint32     [2]uint32
-	Uint64      uint64
-	Uint64s     []uint64
-	AUint64     [2]uint64
-	Float32     float32
-	Float32s    []float32
-	AFloat32    [2]float32
-	Float64     float64
-	Float64s    []float64
-	AFloat64    [2]float64
-	Complex64   complex64
-	Complex64s  []complex64
-	AComplex64  [2]complex64
-	Complex128  complex128
-	Complex128s []complex128
-	AComplex128 [2]complex128
-	Chan        chan int
-	Chans       []chan int
-	AChan       [2]chan int
-	Func        func()
-	Funcs       []func()
-	AFunc       [2]func()
-	String      string
-	Strings     []string
-	AString     [2]string
-	strings     []string
 }
 
 func TestMarshal(t *testing.T) {
@@ -564,18 +576,6 @@ func TestMarshalStructs(t *testing.T) {
 			}
 		}
 	}
-}
-
-type Basic struct {
-	Name string
-	List []string
-}
-
-type Structor struct {
-	ValueMapMap   map[string]map[string]string
-	ValueMapSlice map[string][]string
-	BasicMap map[string]Basic
-	BasicSlice map[string][]Basic
 }
 
 func TestComplicated(t *testing.T) {
