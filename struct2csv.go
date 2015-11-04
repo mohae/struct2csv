@@ -8,6 +8,45 @@ import (
 	"strings"
 )
 
+// An UnsupportedTypeError is returned when attempting to encode an
+// an unsupported value type.
+type UnsupportedTypeError struct {
+	Type reflect.Type
+}
+
+func (e UnsupportedTypeError) Error() string {
+	return fmt.Sprintf("struct2csv: unsupported type: %s", e.Type.String())
+}
+
+// A StructRequiredError is returned when a non-struct type is received.
+type StructRequiredError struct {
+	Type reflect.Type
+}
+
+func (e StructRequiredError) Error() string {
+	return fmt.Sprintf("struct2: a value of type struct is required; type was %s", e.Type.String())
+}
+
+// An UnsupportedMapKeyTypeError is returned when the type of the key is an
+// unsupported value type.
+type UnsupportedMapKeyTypeError struct {
+	Type reflect.Type
+}
+
+func (e UnsupportedMapKeyTypeError Error() string {
+	return fmt.Sprintf("struct2csv: map key is an unsupported type: %s", e.Type.String())
+})
+
+// An UnsupportedMapValueTypeError is returned when the type of the key is an
+// unsupported value type.
+type UnsupportedMapValueTypeError struct {
+	Type reflect.Type
+}
+
+func (e UnsupportedMapValueTypeError Error() string {
+	return fmt.Sprintf("struct2csv: map value is an unsupported type: %s", e.Type.String())
+})
+
 // Encoder handles encoding of a CSV from a struct.
 type Encoder struct {
 	// Whether or not tags should be use for header (column) names; by default this is csv,
@@ -45,7 +84,7 @@ func (e *Encoder) SetUseTags(b bool) {
 // the struct and how to implement this comment.
 func (e *Encoder) GetHeaders(v interface{}) ([]string, error) {
 	if reflect.TypeOf(v).Kind() != reflect.Struct {
-		return nil, fmt.Errorf("struct required: value was of type %s", reflect.TypeOf(v).Kind())
+		return nil, StructRequiredError{ reflect.TypeOf(v).Kind()}
 	}
 	return e.getHeaders(v)
 }
