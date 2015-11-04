@@ -127,6 +127,26 @@ type TTypes struct {
 	strings     []string
 }
 
+type PtrTypes struct {
+	Bool        *bool
+	Bools       []*bool
+	Int         *int
+	Ints        []*int
+	Uint        *uint
+	Uints       []*uint
+	Float64     *float64
+	Float64s    []*float64
+	Complex128  *complex128
+	Complex128s []*complex128
+	Chan        *chan int
+	Chans       []*chan int
+	Func        *func()
+	Funcs       []*func()
+	String      *string
+	Strings     []*string
+	strings     []*string
+}
+
 func TestNew(t *testing.T) {
 	tc := New()
 	if tc.useTags != true {
@@ -656,6 +676,61 @@ FOUND:
 	}
 }
 
+func TestPtrs(t *testing.T) {
+	tst := []PtrTypes{
+		PtrTypes{
+			Bool:        new(bool),
+			Bools:       []*bool{new(bool), new(bool)},
+			Int:         new(int),
+			Ints:        []*int{new(int), new(int)},
+			Uint:        new(uint),
+			Uints:       []*uint{new(uint), new(uint)},
+			Float64:     new(float64),
+			Float64s:    []*float64{new(float64), new(float64)},
+			Complex128:  new(complex128),
+			Complex128s: []*complex128{new(complex128), new(complex128)},
+			Chan:        new(chan int),
+			Chans:       []*chan int{new(chan int), new(chan int)},
+			Func:        new(func()),
+			Funcs:       []*func(){new(func())},
+			String:      new(string),
+			Strings:     []*string{new(string), new(string)},
+			strings:     []*string{new(string)},
+		},
+	}
+	expected := [][]string{
+		[]string{"Bool", "Bools", "Int", "Ints", "Uint", "Uints", "Float64", "Float64s",
+			"Complex128", "Complex128s", "String", "Strings"},
+		[]string{"false", "", "0", "", "0", "", "0+E00", "", "(0+0i)", "", "", ""},
+	}
+//	pbool(tst[0].Bool, true)
+//	pbool(tst[0].Bools[0], true)
+//	pbool(tst[0].Bools[1], true)
+//	pchan(tst[0].Chan)
+//	pchan(tst[0].Chans[0])
+//	pchan(tst[0].Chans[1])
+//	pfunc(tst[0].Func)
+//	pfunc(tst[0].Funcs[0])
+	tc := New()
+	data, err := tc.Marshal(tst)
+	if err != nil {
+		t.Errorf("unexpected err: %q", err)
+	}
+
+	for i, v := range data {
+		if len(v) != len(expected[i]) {
+			t.Errorf("%d: expected row to have %d cols, got %d", i, len(expected[i]), len(v))
+		}
+		for j, c := range v {
+			if c != expected[i][j] {
+				t.Errorf("Expected col value to be %q, got %q", expected[i][j], c)
+			}
+		}
+		if i == 0 {
+			break
+		}
+	}
+}
 // takes a string and returns it's parts:
 // e.g. key1:("value1", "value2"), key2:("value11", "value12")
 // would result in the following slice:
@@ -689,4 +764,37 @@ func StringParts(s string) []string {
 	}
 	return parts
 
+}
+
+// funcs to set pointers
+func pbool(p *bool, v bool) {
+	*p = v
+}
+
+func pint(p *int, v int) {
+	*p = v
+}
+
+func puint(p *uint, v uint) {
+	*p = v
+}
+
+func pfloat64(p *float64, v float64) {
+	*p = v
+}
+
+func pcomplex128(p *complex128, v complex128) {
+	*p = v
+}
+
+func pstring(p *string, v string) {
+	*p = v
+}
+
+func pchan(p *chan int) {
+	*p = make(chan int)
+}
+
+func pfunc(p *func()) {
+	*p = func(){fmt.Println("Hello")}
 }

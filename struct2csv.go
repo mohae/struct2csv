@@ -69,12 +69,22 @@ func (t *Transcoder) getHeaders(v interface{}) ([]string, error) {
 			}
 			hdrs = append(hdrs, tmp...)
 			continue
-		case reflect.Chan, reflect.Func:
+		case reflect.Chan, reflect.Func, reflect.Interface, reflect.Uintptr, reflect.UnsafePointer:
 			continue
 		case reflect.Array, reflect.Slice:
 			// skip if it's a array/slice of chan or func.
 			switch fv.Type().Elem().Kind() {
 			case reflect.Func, reflect.Chan:
+				continue
+			case reflect.Ptr:
+				switch fv.Type().Elem().Elem().Kind(){
+				case reflect.Func, reflect.Chan:
+					continue
+				}
+			}
+		case reflect.Ptr:
+			switch fv.Type().Elem().Kind() {
+			case reflect.Func, reflect.Chan, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
 				continue
 			}
 		}
@@ -171,6 +181,11 @@ func (t *Transcoder) marshalStruct(v interface{}) ([]string, error) {
 			switch f.Type().Elem().Kind() {
 			case reflect.Chan, reflect.Func:
 				continue
+			case reflect.Ptr:
+				switch f.Type().Elem().Elem().Kind(){
+				case reflect.Func, reflect.Chan:
+					continue
+				}
 			}
 			trow, err := t.marshalSlice(f)
 			if err != nil {
@@ -191,6 +206,20 @@ func (t *Transcoder) marshalStruct(v interface{}) ([]string, error) {
 				return nil, err
 			}
 			row = append(row, trow...)
+		case reflect.Ptr:
+			switch f.Type().Elem().Kind() {
+			case reflect.Func, reflect.Chan, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
+				continue
+			}
+			val := f.Elem()
+			if !val.IsValid() {
+				continue
+			}
+			tmp, err := t.stringify(val)
+			if err != nil {
+				return nil, err
+			}
+			row = append(row, tmp)
 		default:
 			return nil, fmt.Errorf("%#v's type not supported: %s", f, f.Kind().String())
 		}
@@ -259,8 +288,10 @@ func (t *Transcoder) marshalMap(v interface{}) (string, error) {
 				row = fmt.Sprintf("%s, %s:(%s)", row, k, trow)
 			}
 			continue
-		case reflect.Chan, reflect.Func:
+		case reflect.Chan, reflect.Func, reflect.Uintptr, reflect.UnsafePointer, reflect.Interface:
 			continue
+		case reflect.Ptr:
+		continue
 		}
 		v, err := t.stringify(val)
 		if err != nil {
@@ -294,6 +325,8 @@ func (t *Transcoder) marshalSlice(v reflect.Value) (string, error) {
 				}
 				str = fmt.Sprintf("%s, %s", str, v)
 			}
+		case reflect.Ptr:
+			continue
 		default:
 			str, err = t.stringify(v.Index(j))
 			if err != nil {
