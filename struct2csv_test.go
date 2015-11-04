@@ -56,8 +56,8 @@ type Address struct {
 type Notes map[string]string
 type Stuff map[string]string
 
-func TestNewTranscoder(t *testing.T) {
-	tc := NewTranscoder()
+func TestNew(t *testing.T) {
+	tc := New()
 	if tc.useTags != true {
 		t.Errorf("expected useTags to be true got %t", tc.useTags)
 	}
@@ -90,7 +90,7 @@ func TestGetHeaders(t *testing.T) {
 			t.Errorf("expected error to be \"struct required: value was of type slice\", got %q", err)
 		}
 	}
-	tc := NewTranscoder()
+	tc := New()
 	tc.useTags = false
 	tst := Tst{}
 	expectedHeaders := []string{"Int", "Ints", "String", "Strings", "StringString", "StringInt", "IntInt"}
@@ -414,7 +414,7 @@ func TestMarshal(t *testing.T) {
 			"(-124+12i)", "(-126+11i), (229+10i)", "(-116+2i), (231+5i)",
 			"Towel", "", "Zaphod, Beeblebrox"},
 	}
-	tc := NewTranscoder()
+	tc := New()
 	data, err := tc.Marshal(Tst{})
 	if err != nil {
 		if err.Error() != "slice required: value was of type struct" {
@@ -527,7 +527,7 @@ func TestMarshalStructs(t *testing.T) {
 		[]string{"Wrigley Field", "1906", "1060 W. Addison St.", "Broadcast Booth", "Chicago", "IL", "60613",
 			"(773) 404-2827", "41.9483", "-87.6556", "MLB:Cubs", "Jack Brickhouse:Hey Hey, Harry Caray:Holy Cow"},
 	}
-	tc := NewTranscoder()
+	tc := New()
 	rows, err := tc.Marshal(Tsts)
 	if err != nil {
 		t.Errorf("did not expect an error: got %q", err)
@@ -616,7 +616,7 @@ func TestComplicated(t *testing.T) {
 		},
 	}
 
-	tc := NewTranscoder()
+	tc := New()
 	rows, err := tc.Marshal(tsts)
 	if err != nil {
 		t.Errorf("unexpected error: %q", err)

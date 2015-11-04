@@ -15,8 +15,8 @@ type Transcoder struct {
 	tag     string // The tag to use when tags are being used for headers; defaults to csv.
 }
 
-// NewTranscoder returns an initialized transcoder
-func NewTranscoder() *Transcoder {
+// New returns an initialized transcoder
+func New() *Transcoder {
 	return &Transcoder{useTags: true, tag: "csv"}
 }
 
@@ -343,9 +343,9 @@ func (t *Transcoder) formatList(s string) string {
 }
 
 // GetHeaders instantiates a Transcoder and gets the headers of the received
-// struct.  If you need more control over tag processing, use NewTranscoder(),
+// struct.  If you need more control over tag processing, use New(),
 // set accordingly, and call Transcoder's GetHeaders().
 func GetHeaders(v interface{}) ([]string, error) {
-	tc := NewTranscoder()
+	tc := New()
 	return tc.GetHeaders(v)
 }
