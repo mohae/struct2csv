@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 // Transcoder handles transcoding from a struct to CSV
@@ -100,8 +101,6 @@ func (t *Transcoder) getHeaders(v interface{}) ([]string, error) {
 // processing, an error will be returned.
 // TODO:
 //    handle pointers
-//    handle map
-//    handle embedded structs
 func (t *Transcoder) Marshal(v interface{}) ([][]string, error) {
 	// must be a slice
 	if reflect.TypeOf(v).Kind() != reflect.Slice {
@@ -131,7 +130,7 @@ func (t *Transcoder) Marshal(v interface{}) ([][]string, error) {
 		s := vv.Index(i)
 		switch s.Kind() {
 		case reflect.Struct:
-			row, err := t.marshalItem(s.Interface())
+			row, err := t.marshalStruct(s.Interface())
 			if err != nil {
 				return nil, err
 			}
@@ -143,7 +142,7 @@ func (t *Transcoder) Marshal(v interface{}) ([][]string, error) {
 	return rows, nil
 }
 
-func (t *Transcoder) marshalItem(v interface{}) ([]string, error) {
+func (t *Transcoder) marshalStruct(v interface{}) ([]string, error) {
 	var row []string
 	val := reflect.ValueOf(v)
 	typ := reflect.TypeOf(v)
@@ -173,18 +172,9 @@ func (t *Transcoder) marshalItem(v interface{}) ([]string, error) {
 			case reflect.Chan, reflect.Func:
 				continue
 			}
-			var trow string
-			// process
-			for j := 0; j < f.Len(); j++ {
-				str, err := t.stringify(f.Index(j))
-				if err != nil {
-					return nil, err
-				}
-				if j == 0 {
-					trow = str
-					continue
-				}
-				trow = fmt.Sprintf("%s, %s", trow, str)
+			trow, err := t.marshalSlice(f)
+			if err != nil {
+				return nil, err
 			}
 			row = append(row, trow)
 		case reflect.Map:
@@ -196,7 +186,7 @@ func (t *Transcoder) marshalItem(v interface{}) ([]string, error) {
 		case reflect.String:
 			row = append(row, f.String())
 		case reflect.Struct:
-			trow, err := t.marshalItem(f.Interface())
+			trow, err := t.marshalStruct(f.Interface())
 			if err != nil {
 				return nil, err
 			}
@@ -216,11 +206,61 @@ func (t *Transcoder) marshalMap(v interface{}) (string, error) {
 		return "", fmt.Errorf("map expected: type was %s", m.Kind().String())
 	}
 	keys := m.MapKeys()
+	if len(keys) == 0 {
+		return "", nil
+	}
 	for i, key := range keys {
 		val := m.MapIndex(key)
 		k, err := t.stringify(key)
 		if err != nil {
 			return "", err
+		}
+		switch val.Kind() {
+		case reflect.Map:
+			tmp, err := t.marshalMap(val.Interface())
+			if err != nil {
+				return "", err
+			}
+			if i == 0 {
+				row = fmt.Sprintf("%s:(%s)", k, tmp)
+			} else {
+				row = fmt.Sprintf("%s, %s:(%s)", row, k, tmp)
+			}
+			continue
+		case reflect.Array, reflect.Slice:
+			tmp, err := t.marshalSlice(val)
+			if err != nil {
+				return "", err
+			}
+			if i == 0 {
+				row = fmt.Sprintf("%s:(%s)", k, tmp)
+			} else {
+				row = fmt.Sprintf("%s, %s:(%s)", row, k, tmp)
+			}
+			continue
+		case reflect.Struct:
+			tmp, err := t.marshalStruct(val.Interface())
+			if err != nil {
+				return "", err
+			}
+			var trow string
+			for j, v := range tmp {
+				// if this is a list, put it in brackets
+				v = t.formatList(v)
+				if j == 0 {
+					trow = v
+				} else {
+					trow = fmt.Sprintf("%s, %s", trow, v)
+				}
+			}
+			if i == 0 {
+				row = fmt.Sprintf("%s:(%s)", k, trow)
+			} else {
+				row = fmt.Sprintf("%s, %s:(%s)", row, k, trow)
+			}
+			continue
+		case reflect.Chan, reflect.Func:
+			continue
 		}
 		v, err := t.stringify(val)
 		if err != nil {
@@ -233,6 +273,40 @@ func (t *Transcoder) marshalMap(v interface{}) (string, error) {
 		row = fmt.Sprintf("%s, %s:%s", row, k, v)
 	}
 	return row, nil
+}
+
+// marshalSlice handles marshaling of slices
+func (t *Transcoder) marshalSlice(v reflect.Value) (string, error) {
+	var sl, str string
+	var err error
+	for j := 0; j < v.Len(); j++ {
+		switch v.Index(j).Kind() {
+		case reflect.Struct:
+			tmp, err := t.marshalStruct(v.Index(j).Interface())
+			if err != nil {
+				return "", err
+			}
+			for i, v := range tmp {
+				v = t.formatList(v)
+				if i == 0 {
+					str = v
+					continue
+				}
+				str = fmt.Sprintf("%s, %s", str, v)
+			}
+		default:
+			str, err = t.stringify(v.Index(j))
+			if err != nil {
+				return "", err
+			}
+		}
+		if j == 0 {
+			sl = str
+			continue
+		}
+		sl = fmt.Sprintf("%s, %s", sl, str)
+	}
+	return sl, nil
 }
 
 // stringify takes a interface and returns the value it contains as a string.
@@ -251,13 +325,23 @@ func (t *Transcoder) stringify(v reflect.Value) (string, error) {
 	case reflect.Float64:
 		return strconv.FormatFloat(v.Float(), 'E', -1, 64), nil
 	case reflect.Complex64, reflect.Complex128:
-	 	return fmt.Sprintf("%g", v.Complex()), nil
+		return fmt.Sprintf("%g", v.Complex()), nil
 	case reflect.String:
 		return v.String(), nil
 	default:
 		return "", fmt.Errorf("stringify: type not supported: %s", v.Kind().String())
 	}
 }
+
+// formatList takes a string and adds brackets to the beginning and end of it
+// if the string contains ", ".  Otherwise it is returned unmodified.
+func (t *Transcoder) formatList(s string) string {
+	if strings.Index(s, ", ") > 0 {
+		return fmt.Sprintf("[%s]", s)
+	}
+	return s
+}
+
 // GetHeaders instantiates a Transcoder and gets the headers of the received
 // struct.  If you need more control over tag processing, use NewTranscoder(),
 // set accordingly, and call Transcoder's GetHeaders().

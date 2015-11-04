@@ -181,7 +181,7 @@ EMBED:
 	}
 	for i, v := range hdr {
 		if v != expectedHeaders[i] {
-			t.Errorf("%d: expected %q got %q", expectedHeaders[i], v)
+			t.Errorf("%d: expected %q got %q", i, expectedHeaders[i], v)
 		}
 	}
 }
@@ -545,10 +545,10 @@ func TestMarshalStructs(t *testing.T) {
 		for j, col := range row {
 			// these are map values so the order may change
 			if j == 11 || j == 12 {
-				tmp := strings.Split(col, ", ")
-				exp := strings.Split(expected[i][j], ", ")
+				tmp := StringParts(col)
+				exp := StringParts(expected[i][j])
 				if len(tmp) != len(exp) {
-					t.Errorf("expected %q, got %q", expected[i][j], col)
+					t.Errorf("expected values to contain: %q, got values: %q", expected[i][j], col)
 				}
 				for _, tv := range tmp {
 					for _, xp := range exp {
@@ -556,13 +556,137 @@ func TestMarshalStructs(t *testing.T) {
 							goto FOUND
 						}
 					}
-					t.Errorf("expected %q, got %q", expected[i][j], col)
-FOUND:
+					t.Errorf("expected values to contain: %q, got values: %q", expected[i][j], col)
+					break
+				FOUND:
 				}
-			}
-			if col != expected[i][j] {
-				t.Errorf("Expected col value to be %q, got %q", expected[i][j], col)
+				continue
 			}
 		}
 	}
+}
+
+type Basic struct {
+	Name string
+	List []string
+}
+
+type Structor struct {
+	ValueMapMap   map[string]map[string]string
+	ValueMapSlice map[string][]string
+	BasicMap map[string]Basic
+	BasicSlice map[string][]Basic
+}
+
+func TestComplicated(t *testing.T) {
+	tsts := []Structor{
+		Structor{
+			ValueMapMap: map[string]map[string]string{
+				"Region 1": map[string]string{
+					"colo1": "rack1",
+					"colo2": "rack2",
+				},
+				"Region 2": map[string]string{
+					"colo11": "rack11",
+					"colo12": "rack12",
+				},
+			},
+			ValueMapSlice: map[string][]string{
+				"Canada": []string{"Alberta", "British Columbia", "Quebec"},
+				"USA":    []string{"California", "Florida", "New York"},
+			},
+			BasicMap: map[string]Basic{
+				"Gibson": Basic{Name: "William Gibson", List: []string{"Neuromancer", "Count Zero", "Mona Lisa Overdrive"}},
+				"Herbert": Basic{Name: "Frank Herbert", List: []string{"Destination Void", "Jesus Incident", "Lazurus Effect"}},
+			},
+		BasicSlice: map[string][]Basic{
+				"SciFi": []Basic{
+					Basic{Name: "William Gibson", List: []string{"Neuromancer", "Count Zero", "Mona Lisa Overdrive"}},
+					Basic{Name: "Frank Herbert", List: []string{"Destination Void", "Jesus Incident", "Lazurus Effect"}},
+				},
+			},
+		},
+	}
+	expected := [][]string{
+		[]string{"ValueMapMap", "ValueMapSlice", "BasicMap", "BasicSlice"},
+		[]string{"Region 1:(colo1:rack1, colo2:rack2), Region 2:(colo11:rack11, colo12:rack12)",
+			"Canada:(Alberta, British Columbia, Quebec), USA:(California, Florida, New York)",
+			"Gibson:(William Gibson, [Neuromancer, Count Zero, Mona Lisa Overdrive]), Herbert:(Frank Herbert, [Destination Void, Jesus Incident, Lazurus Effect])",
+		 	"SciFi:(William Gibson, [Neuromancer, Count Zero, Mona Lisa Overdrive], Frank Herbert, [Destination Void, Jesus Incident, Lazurus Effect])",
+		},
+	}
+
+	tc := NewTranscoder()
+	rows, err := tc.Marshal(tsts)
+	if err != nil {
+		t.Errorf("unexpected error: %q", err)
+		return
+	}
+	if len(rows) != len(expected) {
+		t.Errorf("expected %d rows got %d", len(expected), len(rows))
+		return
+	}
+	if len(rows[0]) != len(expected[0]) {
+		t.Errorf("expected a row to have %d columns, got %d", len(expected[0]), len(rows[0]))
+		return
+	}
+	for i, v := range rows[0] {
+		if v != expected[0][i] {
+			t.Errorf("Expected hdr column %d to be %q, got %q", i, expected[0][i], v)
+		}
+	}
+	for i, v := range rows[1] {
+		rvals := StringParts(v)
+		evals := StringParts(expected[1][i])
+		var found bool
+		for _, v := range rvals {
+			for _, vv := range evals {
+				if vv == v {
+					found = true
+					goto FOUND
+				}
+			}
+FOUND:
+			if !found{
+				t.Errorf("expected results to have values: %q, got %q", expected[1][i], v)
+			}
+			found = false
+		}
+
+	}
+}
+
+// takes a string and returns it's parts:
+// e.g. key1:("value1", "value2"), key2:("value11", "value12")
+// would result in the following slice:
+// []string("key1", "key1value1", "key1value1",
+//           "key2", "key2value11", "key2value12")
+// this makes it easier to make sure the results are as expected for strings
+// built from maps and slices
+func StringParts(s string) []string {
+	if s == "" {
+		return nil
+	}
+	var parts []string
+	var key string
+	tmp := strings.Split(s, "), ")
+	tmp[len(tmp) -1] = strings.TrimSuffix(tmp[len(tmp)-1], ")")
+	// get the key, which is followed by a :
+	for _, v := range tmp {
+		vals := strings.Split(v, ":")
+		if len(vals) > 1 {
+			key = vals[0]
+			vals = append(vals[1:])
+			parts = append(parts, key)
+		}
+		vals[0] = strings.TrimPrefix(vals[0], "(")
+		for _, item := range vals {
+			items := strings.Split(item, ", ")
+			for _, vv := range items {
+				parts = append(parts, fmt.Sprintf("%s%s", key, vv))
+			}
+		}
+	}
+	return parts
+
 }
