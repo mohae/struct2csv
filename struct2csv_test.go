@@ -130,20 +130,28 @@ type TTypes struct {
 type PtrTypes struct {
 	Bool        *bool
 	Bools       []*bool
+	BoolPs *[]bool
 	Int         *int
 	Ints        []*int
+	IntPs *[]int
 	Uint        *uint
 	Uints       []*uint
+	UintPs *[]int
 	Float64     *float64
 	Float64s    []*float64
+	Float64Ps *[]float64
 	Complex128  *complex128
 	Complex128s []*complex128
+	Complex128Ps *[]complex128
 	Chan        *chan int
 	Chans       []*chan int
+	ChanPs *[]chan string
 	Func        *func()
 	Funcs       []*func()
+	FuncPs *[]func()
 	String      *string
 	Strings     []*string
+	StringPs *[]string
 	strings     []*string
 	BoolM map[string]*bool
 	IntM map[string]*int
@@ -153,7 +161,7 @@ type PtrTypes struct {
 	FuncM map[string]*func()
 	StringM map[string]*string
 }
-
+/*
 func TestNew(t *testing.T) {
 	tc := New()
 	if tc.useTags != true {
@@ -184,8 +192,8 @@ func TestGetHeaders(t *testing.T) {
 	if err == nil {
 		t.Error("expected passing of a non struct to result in an error, none received")
 	} else {
-		if err.Error() != "struct required: value was of type slice" {
-			t.Errorf("expected error to be \"struct required: value was of type slice\", got %q", err)
+		if err.Error() != "struct2csv: a value of type struct is required: type was slice" {
+			t.Errorf("expected error to be \"struct2csv: a value of type struct is required: type was slice\", got %q", err)
 		}
 	}
 	tc := New()
@@ -456,8 +464,8 @@ func TestMarshal(t *testing.T) {
 	tc := New()
 	data, err := tc.Marshal(Tst{})
 	if err != nil {
-		if err.Error() != "slice required: value was of type struct" {
-			t.Errorf("Expected \"slice of struct required: value was of type struct\", got %q", err)
+		if err.Error() != "struct2csv: a type of slice is required: type was struct" {
+			t.Errorf("Expected \"struct2csv: a type of slice is required: type was struct\", got %q", err)
 		}
 		goto NILSLICE
 	}
@@ -468,8 +476,8 @@ NILSLICE:
 	var sl []string
 	data, err = tc.Marshal(sl)
 	if err != nil {
-		if err.Error() != "slice cannot be nil" {
-			t.Errorf("Expected \"slice cannot be nil\", got %q", err)
+		if err.Error() != "struct2csv: the slice of structs was nil" {
+			t.Errorf("Expected \"struct2csv: the slice of structs was nil\", got %q", err)
 		}
 		goto ZEROSLICE
 	}
@@ -480,8 +488,8 @@ ZEROSLICE:
 	sl = make([]string, 0)
 	data, err = tc.Marshal(sl)
 	if err != nil {
-		if err.Error() != "slice must have a length of at least 1: length was 0" {
-			t.Errorf("Expected \"slice must have a length of at least 1: length was 0\", got %q", err)
+		if err.Error() != "struct2csv: the slice of structs was empty" {
+			t.Errorf("Expected \"struct2csv: the slice of structs was empty\", got %q", err)
 		}
 		goto NONSTRUCT
 	}
@@ -492,8 +500,8 @@ NONSTRUCT:
 	sl = []string{"hello", "world"}
 	data, err = tc.Marshal(sl)
 	if err != nil {
-		if err.Error() != "slice must be of type struct; type was string" {
-			t.Errorf("Expected \"slice must be of type struct; type was string\", %q", err)
+		if err.Error() != "struct2csv: a slice of type struct is required: slice type was string" {
+			t.Errorf("Expected \"struct2csv: a slice of type struct is required: slice type was string\", %q", err)
 		}
 		goto BASIC
 	}
@@ -682,7 +690,7 @@ FOUND:
 
 	}
 }
-
+*/
 func TestPtrs(t *testing.T) {
 	tst := []PtrTypes{
 		PtrTypes{
@@ -706,10 +714,20 @@ func TestPtrs(t *testing.T) {
 		},
 	}
 	expected := [][]string{
-		[]string{"Bool", "Bools", "Int", "Ints", "Uint", "Uints", "Float64", "Float64s",
-			"Complex128", "Complex128s", "String", "Strings",
+		[]string{"Bool", "Bools", "BoolPs",
+			"Int", "Ints", "IntPs",
+			"Uint", "Uints", "UintPs",
+			"Float64", "Float64s", "Float64Ps",
+			"Complex128", "Complex128s", "Complex128Ps",
+			"String", "Strings", "StringPs",
 			"BoolM", "IntM", "Float64M", "Complex128M", "StringM"},
-		[]string{"false", "", "0", "", "0", "", "0+E00", "", "(0+0i)", "", "", "", "", "", "", ""},
+		[]string{"false", "false, false", "false, false",
+			"0", "0, 0", "",
+			"0", "0, 0", "",
+			"0+E00", "0+E00, 0+E00", "",
+			"(0+0i)", "(0+0i), (0+0i)", "",
+			"", ", ", "",
+			"", "", "", "", ""},
 	}
 //	pbool(tst[0].Bool, true)
 //	pbool(tst[0].Bools[0], true)
@@ -719,13 +737,13 @@ func TestPtrs(t *testing.T) {
 //	pchan(tst[0].Chans[1])
 //	pfunc(tst[0].Func)
 //	pfunc(tst[0].Funcs[0])
+ 	tmp := make([]bool, 2)
+	tst[0].BoolPs = &tmp
 	tc := New()
 	data, err := tc.Marshal(tst)
-	t.Errorf("\n%#v\n%#v\n", expected, data)
 	if err != nil {
 		t.Errorf("unexpected err: %q", err)
 	}
-
 	for i, v := range data {
 		if len(v) != len(expected[i]) {
 			t.Errorf("%d: expected row to have %d cols, got %d", i, len(expected[i]), len(v))

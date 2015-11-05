@@ -2,6 +2,7 @@
 package struct2csv
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -11,41 +12,70 @@ import (
 // An UnsupportedTypeError is returned when attempting to encode an
 // an unsupported value type.
 type UnsupportedTypeError struct {
-	Type reflect.Type
+	Kind reflect.Kind
 }
 
 func (e UnsupportedTypeError) Error() string {
-	return fmt.Sprintf("struct2csv: unsupported type: %s", e.Type.String())
+	return fmt.Sprintf("struct2csv: unsupported type: %s", e.Kind)
 }
 
 // A StructRequiredError is returned when a non-struct type is received.
 type StructRequiredError struct {
-	Type reflect.Type
+	Kind reflect.Kind
 }
 
 func (e StructRequiredError) Error() string {
-	return fmt.Sprintf("struct2: a value of type struct is required; type was %s", e.Type.String())
+	return fmt.Sprintf("struct2csv: a value of type struct is required: type was %s", e.Kind)
+}
+
+// A UnsupportedStringifyTypeError is returned when stringify is asked
+// to create a string out of a type it does not support.
+type UnsupportedStringifyTypeError struct {
+	Kind reflect.Kind
+}
+
+func (e UnsupportedStringifyTypeError) Error() string {
+	return fmt.Sprintf("struct2csv: stringify encountered an unsupported type: %s", e.Kind)
+}
+
+// A StructSliceError is returned when an interface that isn't a slice of
+// type struct is received.
+type StructSliceError struct {
+	Kind reflect.Kind
+	SliceKind reflect.Kind
+}
+
+func (e StructSliceError) Error() string {
+	if e.Kind != reflect.Slice {
+		return fmt.Sprintf("struct2csv: a type of slice is required: type was %s", e.Kind)
+	}
+	return fmt.Sprintf("struct2csv: a slice of type struct is required: slice type was %s", e.SliceKind)
 }
 
 // An UnsupportedMapKeyTypeError is returned when the type of the key is an
 // unsupported value type.
 type UnsupportedMapKeyTypeError struct {
-	Type reflect.Type
+	Kind reflect.Kind
 }
 
-func (e UnsupportedMapKeyTypeError Error() string {
-	return fmt.Sprintf("struct2csv: map key is an unsupported type: %s", e.Type.String())
-})
+func (e UnsupportedMapKeyTypeError) Error() string {
+	return fmt.Sprintf("struct2csv: map key is an unsupported type: %s", e.Kind)
+}
 
 // An UnsupportedMapValueTypeError is returned when the type of the key is an
 // unsupported value type.
 type UnsupportedMapValueTypeError struct {
-	Type reflect.Type
+	Kind reflect.Kind
 }
 
-func (e UnsupportedMapValueTypeError Error() string {
-	return fmt.Sprintf("struct2csv: map value is an unsupported type: %s", e.Type.String())
-})
+func (e UnsupportedMapValueTypeError) Error() string {
+	return fmt.Sprintf("struct2csv: map value is an unsupported type: %s", e.Kind)
+}
+
+var (
+	NilSliceError = errors.New("struct2csv: the slice of structs was nil")
+	EmptySliceError = errors.New("struct2csv: the slice of structs was empty")
+)
 
 // Encoder handles encoding of a CSV from a struct.
 type Encoder struct {
@@ -136,6 +166,13 @@ func (e *Encoder) getHeaders(v interface{}) ([]string, error) {
 			switch fv.Type().Elem().Kind() {
 			case reflect.Func, reflect.Chan, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
 				continue
+			case reflect.Ptr:
+				fmt.Printf("header ptr: %s\n", fv.Type().Elem().Elem().Kind().String())
+			case reflect.Slice:
+				switch fv.Type().Elem().Elem().Kind() {
+				case reflect.Chan, reflect.Func, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
+					continue
+				}
 			}
 		}
 		var name string
@@ -164,15 +201,15 @@ func (e *Encoder) getHeaders(v interface{}) ([]string, error) {
 func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 	// must be a slice
 	if reflect.TypeOf(v).Kind() != reflect.Slice {
-		return nil, fmt.Errorf("slice required: value was of type %s", reflect.TypeOf(v).Kind())
+		return nil, StructSliceError{Kind: reflect.TypeOf(v).Kind()}
 	}
 	// must be a slice of struct
 	vv := reflect.ValueOf(v)
 	if vv.IsNil() {
-		return nil, fmt.Errorf("slice cannot be nil")
+		return nil, NilSliceError
 	}
 	if vv.Len() == 0 {
-		return nil, fmt.Errorf("slice must have a length of at least 1: length was 0")
+		return nil, EmptySliceError
 	}
 	var rows [][]string
 	s := vv.Index(0)
@@ -184,7 +221,7 @@ func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 		}
 		rows = append(rows, hdrs)
 	default:
-		return nil, fmt.Errorf("slice must be of type struct; type was %s", s.Kind().String())
+		return nil, StructSliceError{Kind: reflect.Slice, SliceKind: s.Kind()}
 	}
 	for i := 0; i < vv.Len(); i++ {
 		s := vv.Index(i)
@@ -196,7 +233,7 @@ func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 			}
 			rows = append(rows, row)
 		default:
-			return nil, fmt.Errorf("slice must be of type struct; type was %s", s.Kind().String())
+			return nil, StructSliceError{Kind: reflect.Slice, SliceKind: s.Kind()}
 		}
 	}
 	return rows, nil
@@ -245,6 +282,13 @@ func (e *Encoder) marshalStruct(v interface{}) ([]string, error) {
 		case reflect.Map:
 			col, err := e.marshalMap(f.Interface())
 			if err != nil {
+				// skip unsupported maps
+				if _, ok := err.(UnsupportedMapKeyTypeError); ok {
+					continue
+				}
+				if _, ok := err.(UnsupportedMapValueTypeError); ok {
+				 	continue
+				}
 				return nil, err
 			}
 			row = append(row, col)
@@ -260,6 +304,26 @@ func (e *Encoder) marshalStruct(v interface{}) ([]string, error) {
 			switch f.Type().Elem().Kind() {
 			case reflect.Func, reflect.Chan, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
 				continue
+			case reflect.Ptr:
+				fmt.Printf("rptr: %#v\n", f.Type().Elem().Elem().Kind().String())
+				switch f.Type().Elem().Elem().Kind() {
+				case reflect.Chan, reflect.Func, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
+					continue
+				}
+			case reflect.Slice:
+				switch f.Type().Elem().Elem().Kind() {
+				case reflect.Chan, reflect.Func, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
+					continue
+				}
+				fmt.Printf("ptr: %#v\n", f.Type().Elem().Kind().String())
+				fmt.Printf("ptrval: %#v\n", f.Type().Elem())
+				trow, err := e.marshalSlice(f.Elem())
+				fmt.Printf("ptrslice stringify: %s\n", trow)
+				if err != nil {
+					return nil, err
+				}
+				row = append(row, trow)
+				continue
 			}
 			val := f.Elem()
 			if !val.IsValid() {
@@ -271,7 +335,7 @@ func (e *Encoder) marshalStruct(v interface{}) ([]string, error) {
 			}
 			row = append(row, tmp)
 		default:
-			return nil, fmt.Errorf("%#v's type not supported: %s", f, f.Kind().String())
+			return nil, UnsupportedTypeError{f.Kind()}
 		}
 	}
 	return row, nil
@@ -281,20 +345,17 @@ func (e *Encoder) marshalStruct(v interface{}) ([]string, error) {
 func (e *Encoder) marshalMap(v interface{}) (string, error) {
 	var row string
 	m := reflect.ValueOf(v)
-	if m.Kind() != reflect.Map {
-		return "", fmt.Errorf("map expected: type was %s", m.Kind().String())
-	}
 	//  TODO add support for checking unsupported key types and handle, e.g. func & chan
 	// a map may be nil but we still need to know its key and value types.
 	//mz := reflect.Zero(m.Type().Key())
 	// check to see if the value is supported:
 	switch reflect.Zero(m.Type().Elem()).Kind(){
 	case reflect.Chan, reflect.Func:
-		return fmt.Sprintf("unsupported value type %q", reflect.Zero(m.Type().Elem()).Kind()), nil
+		return "", UnsupportedMapValueTypeError{reflect.Zero(m.Type().Elem()).Kind()}
 	case reflect.Ptr:
 		switch reflect.Zero(m.Type().Elem().Elem()).Kind() {
 		case reflect.Func, reflect.Chan:
-			return fmt.Sprintf("unsupported value type %q", reflect.Zero(m.Type().Elem().Elem()).Kind()), nil
+			return "", UnsupportedMapValueTypeError{reflect.Zero(m.Type().Elem().Elem()).Kind()}
 		}
 	}
 	keys := m.MapKeys()
@@ -311,7 +372,6 @@ func (e *Encoder) marshalMap(v interface{}) (string, error) {
 			case reflect.Func, reflect.Chan:
 				continue
 			case reflect.Ptr:
-				fmt.Println("data map key ptr: ", val.Type().Elem().Elem().Kind())
 				switch val.Type().Elem().Elem().Kind(){
 				case reflect.Func, reflect.Chan:
 					continue
@@ -382,6 +442,11 @@ func (e *Encoder) marshalMap(v interface{}) (string, error) {
 func (e *Encoder) marshalSlice(v reflect.Value) (string, error) {
 	var sl, str string
 	var err error
+	// this handles *[]'s that are nil'
+	if v.Kind() == reflect.Invalid {
+		return "", nil
+	}
+	fmt.Println("mslice:", v)
 	for j := 0; j < v.Len(); j++ {
 		switch v.Index(j).Kind() {
 		case reflect.Struct:
@@ -398,9 +463,42 @@ func (e *Encoder) marshalSlice(v reflect.Value) (string, error) {
 				str = fmt.Sprintf("%s, %s", str, v)
 			}
 		case reflect.Ptr:
-			continue
+			switch v.Index(j).Elem().Kind() {
+			case reflect.Func, reflect.Chan, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
+				continue
+			case reflect.Ptr:
+				fmt.Printf("slice ptr: %#v\n", v.Index(j).Elem().Kind().String())
+				continue
+			}
+			fmt.Printf("slice ptr elem: %#v\n", v.Index(j).Elem().Kind().String())
+			str, err = e.stringify(v.Index(j).Elem())
+			fmt.Println("slice ptr stringify: ", str)
+			if err != nil {
+				return "", err
+			}
+//			fmt.Printf("slice ptr: %#v\n", v.Index(j).Elem().Kind().String())
+/*
+			case reflect.Slice:
+				switch f.Type().Elem().Elem().Kind() {
+				case reflect.Chan, reflect.Func, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
+					continue
+				}
+			}
+*/
+/*			val := f.Elem()
+			if !val.IsValid() {
+				continue
+			}
+			tmp, err := e.stringify(val)
+			if err != nil {
+				return nil, err
+			}
+			row = append(row, tmp)
+*/
 		default:
+			fmt.Printf("slice default: %#v\n", v.Index(j).Kind().String())
 			str, err = e.stringify(v.Index(j))
+			fmt.Println("slice dflt stringify: ", str)
 			if err != nil {
 				return "", err
 			}
@@ -434,7 +532,7 @@ func (e *Encoder) stringify(v reflect.Value) (string, error) {
 	case reflect.String:
 		return v.String(), nil
 	default:
-		return "", fmt.Errorf("stringify: type not supported: %s", v.Kind().String())
+		return "", UnsupportedStringifyTypeError{v.Kind()}
 	}
 }
 
