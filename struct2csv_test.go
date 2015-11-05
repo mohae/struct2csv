@@ -153,13 +153,20 @@ type PtrTypes struct {
 	Strings     []*string
 	StringPs *[]string
 	strings     []*string
-	BoolM map[string]*bool
-	IntM map[string]*int
-	Float64M map[string]*float64
-	Complex128M map[int]*complex128
+	BoolM map[bool]*bool
+	IntM map[int]*int
+	Float64M map[float64]*float64
+	Complex128M map[complex128]*complex128
 	ChanM map[string]*chan string
 	FuncM map[string]*func()
 	StringM map[string]*string
+	KBoolM map[*bool]bool
+	KIntM map[*int]int
+	KFloat64M map[*float64]float64
+	KComplex128M map[*complex128]complex128
+	KChanM map[*chan string]string
+	KFuncM map[*func()]func()
+	KStringM map[*string]string
 }
 /*
 func TestNew(t *testing.T) {
@@ -720,13 +727,15 @@ func TestPtrs(t *testing.T) {
 			"Float64", "Float64s", "Float64Ps",
 			"Complex128", "Complex128s", "Complex128Ps",
 			"String", "Strings", "StringPs",
-			"BoolM", "IntM", "Float64M", "Complex128M", "StringM"},
+			"BoolM", "IntM", "Float64M", "Complex128M", "StringM",
+			"KBoolM", "KIntM", "KFloat64M", "KComplex128M", "KStringM"},
 		[]string{"false", "false, false", "false, false",
 			"0", "0, 0", "",
 			"0", "0, 0", "",
 			"0+E00", "0+E00, 0+E00", "",
 			"(0+0i)", "(0+0i), (0+0i)", "",
 			"", ", ", "",
+			"", "", "", "", "",
 			"", "", "", "", ""},
 	}
 //	pbool(tst[0].Bool, true)
