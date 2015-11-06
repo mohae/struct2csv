@@ -41,7 +41,7 @@ func (e UnsupportedStringifyTypeError) Error() string {
 // A StructSliceError is returned when an interface that isn't a slice of
 // type struct is received.
 type StructSliceError struct {
-	Kind reflect.Kind
+	Kind      reflect.Kind
 	SliceKind reflect.Kind
 }
 
@@ -73,7 +73,7 @@ func (e UnsupportedMapValueTypeError) Error() string {
 }
 
 var (
-	NilSliceError = errors.New("struct2csv: the slice of structs was nil")
+	NilSliceError   = errors.New("struct2csv: the slice of structs was nil")
 	EmptySliceError = errors.New("struct2csv: the slice of structs was empty")
 )
 
@@ -114,7 +114,7 @@ func (e *Encoder) SetUseTags(b bool) {
 // the struct and how to implement this comment.
 func (e *Encoder) GetHeaders(v interface{}) ([]string, error) {
 	if reflect.TypeOf(v).Kind() != reflect.Struct {
-		return nil, StructRequiredError{ reflect.TypeOf(v).Kind()}
+		return nil, StructRequiredError{reflect.TypeOf(v).Kind()}
 	}
 	return e.getHeaders(v)
 }
@@ -130,6 +130,9 @@ func (e *Encoder) getHeaders(v interface{}) ([]string, error) {
 			continue
 		}
 		fv := sv.Field(i)
+		if !isSupported(fv.Kind()) {
+			continue
+		}
 		switch fv.Kind() {
 		case reflect.Struct:
 			tmp, err := e.getHeaders(fv.Interface())
@@ -138,39 +141,79 @@ func (e *Encoder) getHeaders(v interface{}) ([]string, error) {
 			}
 			hdrs = append(hdrs, tmp...)
 			continue
-		case reflect.Chan, reflect.Func, reflect.Interface, reflect.Uintptr, reflect.UnsafePointer:
-			continue
 		case reflect.Array, reflect.Slice:
-			// skip if it's a array/slice of chan or func.
-			switch fv.Type().Elem().Kind() {
-			case reflect.Func, reflect.Chan:
+			if skipSliceField(fv) {
 				continue
-			case reflect.Ptr:
-				switch fv.Type().Elem().Elem().Kind(){
-				case reflect.Func, reflect.Chan:
-					continue
-				}
 			}
 		case reflect.Map:
-			// skip if it's a array/slice of chan or func.
-			switch fv.Type().Elem().Kind() {
+			//fmt.Println(fv.MapIndex())
+			switch fv.Type().Key().Kind() {
 			case reflect.Func, reflect.Chan:
 				continue
 			case reflect.Ptr:
-				switch fv.Type().Elem().Elem().Kind(){
-				case reflect.Func, reflect.Chan:
+				k := fv.Type().Key()
+				switch k.Kind() {
+				case reflect.Ptr:
+					if !isSupported(k.Elem().Kind()) {
+						continue
+					}
+				case reflect.Chan, reflect.Func, reflect.Interface, reflect.Uintptr, reflect.UnsafePointer:
 					continue
 				}
 			}
+			// get the value type
+			var k reflect.Type
+			switch fv.Type().Kind() {
+			case reflect.Ptr:
+				k = fv.Type().Elem().Key()
+			default:
+				k = fv.Type().Key()
+			}
+			kv := reflect.Zero(k)
+			// if it's a pointer, get what it points to
+			if kv.Kind() == reflect.Ptr {
+				kv = kv.Elem()
+			}
+			/*
+				// if it's invalid, we have no way of knowing the type of the map value
+				// so this column gets marshaled.
+				if kv.Kind() != reflect.Invalid {
+					switch fv.Type().Kind() {
+					case reflect.Ptr:
+						val := fv.Elem().MapIndex(kv)
+					default:
+						fmt.Println(fv)
+						val := fv.MapIndex(kv)
+					}
+				}
+			*/
 		case reflect.Ptr:
 			switch fv.Type().Elem().Kind() {
 			case reflect.Func, reflect.Chan, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
 				continue
 			case reflect.Ptr:
-				fmt.Printf("header ptr: %s\n", fv.Type().Elem().Elem().Kind().String())
+				k := fv.Type().Elem().Key()
+				switch k.Kind() {
+				case reflect.Ptr:
+					switch k.Elem().Kind() {
+					case reflect.Chan, reflect.Func, reflect.Interface, reflect.Uintptr, reflect.UnsafePointer:
+						continue
+					}
+				case reflect.Chan, reflect.Func, reflect.Interface, reflect.Uintptr, reflect.UnsafePointer:
+					continue
+				}
 			case reflect.Slice:
-				switch fv.Type().Elem().Elem().Kind() {
-				case reflect.Chan, reflect.Func, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
+				if skipSliceField(fv) {
+					continue
+				}
+			case reflect.Map:
+				k := fv.Type().Elem().Key()
+				switch k.Kind() {
+				case reflect.Ptr:
+					if !isSupported(k.Elem().Kind()) {
+						continue
+					}
+				case reflect.Chan, reflect.Func, reflect.Interface, reflect.Uintptr, reflect.UnsafePointer:
 					continue
 				}
 			}
@@ -248,6 +291,7 @@ func (e *Encoder) marshalStruct(v interface{}) ([]string, error) {
 			continue
 		}
 		f := val.Field(i)
+
 		switch f.Kind() {
 		case reflect.Bool:
 			row = append(row, strconv.FormatBool(f.Bool()))
@@ -264,15 +308,8 @@ func (e *Encoder) marshalStruct(v interface{}) ([]string, error) {
 		case reflect.Chan, reflect.Func:
 			continue
 		case reflect.Array, reflect.Slice:
-			// skip these
-			switch f.Type().Elem().Kind() {
-			case reflect.Chan, reflect.Func:
+			if skipSliceField(f) {
 				continue
-			case reflect.Ptr:
-				switch f.Type().Elem().Elem().Kind(){
-				case reflect.Func, reflect.Chan:
-					continue
-				}
 			}
 			trow, err := e.marshalSlice(f)
 			if err != nil {
@@ -280,14 +317,14 @@ func (e *Encoder) marshalStruct(v interface{}) ([]string, error) {
 			}
 			row = append(row, trow)
 		case reflect.Map:
-			col, err := e.marshalMap(f.Interface())
+			col, err := e.marshalMap(f)
 			if err != nil {
 				// skip unsupported maps
 				if _, ok := err.(UnsupportedMapKeyTypeError); ok {
 					continue
 				}
 				if _, ok := err.(UnsupportedMapValueTypeError); ok {
-				 	continue
+					continue
 				}
 				return nil, err
 			}
@@ -305,24 +342,52 @@ func (e *Encoder) marshalStruct(v interface{}) ([]string, error) {
 			case reflect.Func, reflect.Chan, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
 				continue
 			case reflect.Ptr:
-				fmt.Printf("rptr: %#v\n", f.Type().Elem().Elem().Kind().String())
 				switch f.Type().Elem().Elem().Kind() {
 				case reflect.Chan, reflect.Func, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
 					continue
 				}
 			case reflect.Slice:
-				switch f.Type().Elem().Elem().Kind() {
-				case reflect.Chan, reflect.Func, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
+				if skipSliceField(f) {
 					continue
 				}
-				fmt.Printf("ptr: %#v\n", f.Type().Elem().Kind().String())
-				fmt.Printf("ptrval: %#v\n", f.Type().Elem())
 				trow, err := e.marshalSlice(f.Elem())
-				fmt.Printf("ptrslice stringify: %s\n", trow)
 				if err != nil {
+					fmt.Println("marshal struct ptr:slice stringify", err)
 					return nil, err
 				}
 				row = append(row, trow)
+				continue
+			case reflect.Map:
+				if reflect.Indirect(f).Kind() == reflect.Invalid {
+					// check the key and value to see if their supported types
+					k := f.Type().Elem().Key()
+					if k.Kind() == reflect.Ptr {
+						k = f.Type().Elem().Key().Elem()
+					}
+					switch k.Kind() {
+					case reflect.Chan, reflect.Func, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
+						continue
+					}
+					// Note, for pointers to nil maps, maps whose value types are unsupported will
+					// also have an ampty string appended to the row.  This is because trying to
+					// obtain the value type of a field which is a pointer to a nil map results in
+					// a panic.
+					// TODO handle this.
+					row = append(row, "")
+					continue
+				}
+				col, err := e.marshalMap(f.Elem())
+				if err != nil {
+					// skip unsupported maps
+					if _, ok := err.(UnsupportedMapKeyTypeError); ok {
+						continue
+					}
+					if _, ok := err.(UnsupportedMapValueTypeError); ok {
+						continue
+					}
+					return nil, err
+				}
+				row = append(row, col)
 				continue
 			}
 			val := f.Elem()
@@ -331,6 +396,7 @@ func (e *Encoder) marshalStruct(v interface{}) ([]string, error) {
 			}
 			tmp, err := e.stringify(val)
 			if err != nil {
+				fmt.Println("marshal struct dflt stringify", err)
 				return nil, err
 			}
 			row = append(row, tmp)
@@ -342,20 +408,25 @@ func (e *Encoder) marshalStruct(v interface{}) ([]string, error) {
 }
 
 // marshal map handles marshalling of maps
-func (e *Encoder) marshalMap(v interface{}) (string, error) {
+func (e *Encoder) marshalMap(m reflect.Value) (string, error) {
 	var row string
-	m := reflect.ValueOf(v)
 	//  TODO add support for checking unsupported key types and handle, e.g. func & chan
 	// a map may be nil but we still need to know its key and value types.
 	//mz := reflect.Zero(m.Type().Key())
 	// check to see if the value is supported:
-	switch reflect.Zero(m.Type().Elem()).Kind(){
+	switch m.Type().Key().Kind() {
 	case reflect.Chan, reflect.Func:
-		return "", UnsupportedMapValueTypeError{reflect.Zero(m.Type().Elem()).Kind()}
+		return "", UnsupportedMapValueTypeError{m.Type().Key().Kind()}
 	case reflect.Ptr:
-		switch reflect.Zero(m.Type().Elem().Elem()).Kind() {
+		k := m.Type().Key()
+		switch k.Kind() {
 		case reflect.Func, reflect.Chan:
-			return "", UnsupportedMapValueTypeError{reflect.Zero(m.Type().Elem().Elem()).Kind()}
+			return "", UnsupportedMapValueTypeError{k.Kind()}
+		case reflect.Ptr:
+			switch k.Elem().Kind() {
+			case reflect.Chan, reflect.Func, reflect.Interface, reflect.Uintptr, reflect.UnsafePointer:
+				return "", UnsupportedMapValueTypeError{k.Elem().Kind()}
+			}
 		}
 	}
 	keys := m.MapKeys()
@@ -363,6 +434,7 @@ func (e *Encoder) marshalMap(v interface{}) (string, error) {
 		val := m.MapIndex(key)
 		k, err := e.stringify(key)
 		if err != nil {
+			fmt.Println("map key", err)
 			return "", err
 		}
 		switch val.Kind() {
@@ -372,12 +444,12 @@ func (e *Encoder) marshalMap(v interface{}) (string, error) {
 			case reflect.Func, reflect.Chan:
 				continue
 			case reflect.Ptr:
-				switch val.Type().Elem().Elem().Kind(){
+				switch val.Type().Elem().Elem().Kind() {
 				case reflect.Func, reflect.Chan:
 					continue
 				}
 			}
-			tmp, err := e.marshalMap(val.Interface())
+			tmp, err := e.marshalMap(val)
 			if err != nil {
 				return "", err
 			}
@@ -422,11 +494,11 @@ func (e *Encoder) marshalMap(v interface{}) (string, error) {
 		case reflect.Chan, reflect.Func, reflect.Uintptr, reflect.UnsafePointer, reflect.Interface:
 			continue
 		case reflect.Ptr:
-			fmt.Println("map value ptr: ", val.Type().Elem().Kind())
-		continue
+			continue
 		}
 		v, err := e.stringify(val)
 		if err != nil {
+			fmt.Println("stringify val", err)
 			return "", err
 		}
 		if i == 0 {
@@ -446,7 +518,6 @@ func (e *Encoder) marshalSlice(v reflect.Value) (string, error) {
 	if v.Kind() == reflect.Invalid {
 		return "", nil
 	}
-	fmt.Println("mslice:", v)
 	for j := 0; j < v.Len(); j++ {
 		switch v.Index(j).Kind() {
 		case reflect.Struct:
@@ -463,43 +534,21 @@ func (e *Encoder) marshalSlice(v reflect.Value) (string, error) {
 				str = fmt.Sprintf("%s, %s", str, v)
 			}
 		case reflect.Ptr:
-			switch v.Index(j).Elem().Kind() {
-			case reflect.Func, reflect.Chan, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
-				continue
-			case reflect.Ptr:
-				fmt.Printf("slice ptr: %#v\n", v.Index(j).Elem().Kind().String())
+			if !isSupported(v.Index(j).Elem().Kind()) {
 				continue
 			}
-			fmt.Printf("slice ptr elem: %#v\n", v.Index(j).Elem().Kind().String())
+			if v.Index(j).Elem().Kind() == reflect.Ptr {
+				continue
+			}
 			str, err = e.stringify(v.Index(j).Elem())
-			fmt.Println("slice ptr stringify: ", str)
 			if err != nil {
+				fmt.Println("marshal slice ptr stringify", err)
 				return "", err
 			}
-//			fmt.Printf("slice ptr: %#v\n", v.Index(j).Elem().Kind().String())
-/*
-			case reflect.Slice:
-				switch f.Type().Elem().Elem().Kind() {
-				case reflect.Chan, reflect.Func, reflect.Uintptr, reflect.Interface, reflect.UnsafePointer:
-					continue
-				}
-			}
-*/
-/*			val := f.Elem()
-			if !val.IsValid() {
-				continue
-			}
-			tmp, err := e.stringify(val)
-			if err != nil {
-				return nil, err
-			}
-			row = append(row, tmp)
-*/
 		default:
-			fmt.Printf("slice default: %#v\n", v.Index(j).Kind().String())
 			str, err = e.stringify(v.Index(j))
-			fmt.Println("slice dflt stringify: ", str)
 			if err != nil {
+				fmt.Println("marshal slice dflt stringify", err)
 				return "", err
 			}
 		}
@@ -552,13 +601,35 @@ func GetHeaders(v interface{}) ([]string, error) {
 	tc := New()
 	return tc.GetHeaders(v)
 }
-/*
-func getKeyType(k []reflect.Value) reflect.Kind {
-	if len(k) > 0 {
-		return k[0].Type().Kind()
+
+// func skipSliceField handles both slices and arrays
+func skipSliceField(f reflect.Value) bool {
+	// skip if it's not a supported type
+	if !isSupported(f.Type().Elem().Kind()) {
+		return true
 	}
-	// parse the string value to determine Kind
-	fmt.Println()
-	return reflect.Map
+	// check to see if it's either a pointer or a slice and check it's type if it is
+	if f.Type().Elem().Kind() == reflect.Ptr || f.Type().Elem().Kind() == reflect.Slice {
+		if !isSupported(f.Type().Elem().Elem().Kind()) {
+			return true
+		}
+	}
+	return false
+
 }
-*/
+
+func isSupported(k reflect.Kind) bool {
+	switch k {
+	case reflect.Chan:
+		return false
+	case reflect.Func:
+		return false
+	case reflect.Interface:
+		return false
+	case reflect.Uintptr:
+		return false
+	case reflect.UnsafePointer:
+		return false
+	}
+	return true
+}

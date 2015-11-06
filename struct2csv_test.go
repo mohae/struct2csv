@@ -64,8 +64,8 @@ type Basic struct {
 type Structor struct {
 	ValueMapMap   map[string]map[string]string
 	ValueMapSlice map[string][]string
-	BasicMap map[string]Basic
-	BasicSlice map[string][]Basic
+	BasicMap      map[string]Basic
+	BasicSlice    map[string][]Basic
 }
 
 type TTypes struct {
@@ -128,47 +128,61 @@ type TTypes struct {
 }
 
 type PtrTypes struct {
-	Bool        *bool
-	Bools       []*bool
-	BoolPs *[]bool
-	Int         *int
-	Ints        []*int
-	IntPs *[]int
-	Uint        *uint
-	Uints       []*uint
-	UintPs *[]int
-	Float64     *float64
-	Float64s    []*float64
-	Float64Ps *[]float64
-	Complex128  *complex128
-	Complex128s []*complex128
+	Bool         *bool
+	Bools        []*bool
+	BoolPs       *[]bool
+	Int          *int
+	Ints         []*int
+	IntPs        *[]int
+	Uint         *uint
+	Uints        []*uint
+	UintPs       *[]int
+	Float64      *float64
+	Float64s     []*float64
+	Float64Ps    *[]float64
+	Complex128   *complex128
+	Complex128s  []*complex128
 	Complex128Ps *[]complex128
-	Chan        *chan int
-	Chans       []*chan int
-	ChanPs *[]chan string
-	Func        *func()
-	Funcs       []*func()
-	FuncPs *[]func()
-	String      *string
-	Strings     []*string
-	StringPs *[]string
-	strings     []*string
-	BoolM map[bool]*bool
-	IntM map[int]*int
-	Float64M map[float64]*float64
-	Complex128M map[complex128]*complex128
-	ChanM map[string]*chan string
-	FuncM map[string]*func()
-	StringM map[string]*string
-	KBoolM map[*bool]bool
-	KIntM map[*int]int
-	KFloat64M map[*float64]float64
-	KComplex128M map[*complex128]complex128
-	KChanM map[*chan string]string
-	KFuncM map[*func()]func()
-	KStringM map[*string]string
+	Chan         *chan int
+	Chans        []*chan int
+	ChanPs       *[]chan string
+	Func         *func()
+	Funcs        []*func()
+	FuncPs       *[]func()
+	String       *string
+	Strings      []*string
+	StringPs     *[]string
+	strings      []*string
+	BoolM        map[bool]*bool
+	IntM         map[int]*int
+	Float64M     map[float64]*float64
+	Complex128M  map[complex128]*complex128
+	ChanM        map[*chan string]*chan string
+	//FuncM         map[int]func()
+	//FuncMP         map[int]*func()
+	StringM       map[string]*string
+	KBoolM        map[*bool]*int
+	KIntM         map[*int]bool
+	KFloat64M     map[*float64]float64
+	KComplex128M  map[*complex128]complex128
+	KChanM        map[*chan int]string
+	KFuncM        map[*func()]func()
+	KStringM      map[*string]string
+	PBoolM        *map[bool]*bool
+	PIntM         *map[int]*int
+	PFloat64M     *map[float64]*float64
+	PComplex128M  *map[complex128]*complex128
+	PChanM        *map[chan int]*chan string
+	PStringM      *map[string]*string
+	PKBoolM       *map[*bool]bool
+	PKIntM        *map[*int]int
+	PKFloat64M    *map[*float64]float64
+	PKComplex128M *map[*complex128]complex128
+	PKChanM       *map[*chan int]string
+	PKFuncM       *map[*func()]func()
+	PKStringM     *map[*string]string
 }
-/*
+
 func TestNew(t *testing.T) {
 	tc := New()
 	if tc.useTags != true {
@@ -194,6 +208,7 @@ func TestNew(t *testing.T) {
 		t.Errorf("expected transcoder's tag to be \"csv\", got %q", tc.tag)
 	}
 }
+
 func TestGetHeaders(t *testing.T) {
 	_, err := GetHeaders([]string{"a", "b", "c"})
 	if err == nil {
@@ -638,10 +653,10 @@ func TestComplicated(t *testing.T) {
 				"USA":    []string{"California", "Florida", "New York"},
 			},
 			BasicMap: map[string]Basic{
-				"Gibson": Basic{Name: "William Gibson", List: []string{"Neuromancer", "Count Zero", "Mona Lisa Overdrive"}},
+				"Gibson":  Basic{Name: "William Gibson", List: []string{"Neuromancer", "Count Zero", "Mona Lisa Overdrive"}},
 				"Herbert": Basic{Name: "Frank Herbert", List: []string{"Destination Void", "Jesus Incident", "Lazurus Effect"}},
 			},
-		BasicSlice: map[string][]Basic{
+			BasicSlice: map[string][]Basic{
 				"SciFi": []Basic{
 					Basic{Name: "William Gibson", List: []string{"Neuromancer", "Count Zero", "Mona Lisa Overdrive"}},
 					Basic{Name: "Frank Herbert", List: []string{"Destination Void", "Jesus Incident", "Lazurus Effect"}},
@@ -654,7 +669,7 @@ func TestComplicated(t *testing.T) {
 		[]string{"Region 1:(colo1:rack1, colo2:rack2), Region 2:(colo11:rack11, colo12:rack12)",
 			"Canada:(Alberta, British Columbia, Quebec), USA:(California, Florida, New York)",
 			"Gibson:(William Gibson, [Neuromancer, Count Zero, Mona Lisa Overdrive]), Herbert:(Frank Herbert, [Destination Void, Jesus Incident, Lazurus Effect])",
-		 	"SciFi:(William Gibson, [Neuromancer, Count Zero, Mona Lisa Overdrive], Frank Herbert, [Destination Void, Jesus Incident, Lazurus Effect])",
+			"SciFi:(William Gibson, [Neuromancer, Count Zero, Mona Lisa Overdrive], Frank Herbert, [Destination Void, Jesus Incident, Lazurus Effect])",
 		},
 	}
 
@@ -688,8 +703,8 @@ func TestComplicated(t *testing.T) {
 					goto FOUND
 				}
 			}
-FOUND:
-			if !found{
+		FOUND:
+			if !found {
 				t.Errorf("expected results to have values: %q, got %q", expected[1][i], v)
 			}
 			found = false
@@ -697,7 +712,7 @@ FOUND:
 
 	}
 }
-*/
+
 func TestPtrs(t *testing.T) {
 	tst := []PtrTypes{
 		PtrTypes{
@@ -728,30 +743,38 @@ func TestPtrs(t *testing.T) {
 			"Complex128", "Complex128s", "Complex128Ps",
 			"String", "Strings", "StringPs",
 			"BoolM", "IntM", "Float64M", "Complex128M", "StringM",
-			"KBoolM", "KIntM", "KFloat64M", "KComplex128M", "KStringM"},
-		[]string{"false", "false, false", "false, false",
+			"KBoolM", "KIntM", "KFloat64M", "KComplex128M", "KStringM",
+			"PBoolM", "PIntM", "PFloat64M", "PComplex128M", "PStringM",
+			"PKBoolM", "PKIntM", "PKFloat64M", "PKComplex128M", "PKStringM"},
+		[]string{"false", "false, false", "",
 			"0", "0, 0", "",
 			"0", "0, 0", "",
 			"0+E00", "0+E00, 0+E00", "",
 			"(0+0i)", "(0+0i), (0+0i)", "",
 			"", ", ", "",
 			"", "", "", "", "",
+			"", "", "", "", "",
+			"", "", "", "", "",
 			"", "", "", "", ""},
 	}
-//	pbool(tst[0].Bool, true)
-//	pbool(tst[0].Bools[0], true)
-//	pbool(tst[0].Bools[1], true)
-//	pchan(tst[0].Chan)
-//	pchan(tst[0].Chans[0])
-//	pchan(tst[0].Chans[1])
-//	pfunc(tst[0].Func)
-//	pfunc(tst[0].Funcs[0])
- 	tmp := make([]bool, 2)
-	tst[0].BoolPs = &tmp
+	//	pbool(tst[0].Bool, true)
+	//	pbool(tst[0].Bools[0], true)
+	//	pbool(tst[0].Bools[1], true)
+	//	pchan(tst[0].Chan)
+	//	pchan(tst[0].Chans[0])
+	//	pchan(tst[0].Chans[1])
+	//	pfunc(tst[0].Func)
+	//	pfunc(tst[0].Funcs[0])
+
+	// 	tmp := make(*[]bool, 2)
+	//	tst[0].BoolPs = &tmp
+	//tst[0].KBoolM = make([*bool]bool, 1)
 	tc := New()
+	m := make(map[bool]*bool)
+	tst[0].PBoolM = &m
 	data, err := tc.Marshal(tst)
 	if err != nil {
-		t.Errorf("unexpected err: %q", err)
+		t.Errorf("Unexpected error %q", err)
 	}
 	for i, v := range data {
 		if len(v) != len(expected[i]) {
@@ -767,6 +790,7 @@ func TestPtrs(t *testing.T) {
 		}
 	}
 }
+
 // takes a string and returns it's parts:
 // e.g. key1:("value1", "value2"), key2:("value11", "value12")
 // would result in the following slice:
@@ -781,7 +805,7 @@ func StringParts(s string) []string {
 	var parts []string
 	var key string
 	tmp := strings.Split(s, "), ")
-	tmp[len(tmp) -1] = strings.TrimSuffix(tmp[len(tmp)-1], ")")
+	tmp[len(tmp)-1] = strings.TrimSuffix(tmp[len(tmp)-1], ")")
 	// get the key, which is followed by a :
 	for _, v := range tmp {
 		vals := strings.Split(v, ":")
@@ -801,6 +825,7 @@ func StringParts(s string) []string {
 	return parts
 
 }
+
 /*
 func TestGetValueSliceType(t * testing.T) {
 	v := interface{}(map[string]int{})
@@ -840,5 +865,5 @@ func pchan(p *chan int) {
 }
 
 func pfunc(p *func()) {
-	*p = func(){fmt.Println("Hello")}
+	*p = func() { fmt.Println("Hello") }
 }
