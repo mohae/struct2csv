@@ -73,8 +73,10 @@ func (e UnsupportedMapValueTypeError) Error() string {
 }
 
 var (
-	NilSliceError   = errors.New("struct2csv: the slice of structs was nil")
-	EmptySliceError = errors.New("struct2csv: the slice of structs was empty")
+	// ErrNilSlice occurs when the slice of structs to encode is nil.
+	ErrNilSlice   = errors.New("struct2csv: the slice of structs was nil")
+	// ErrEmptySlice occurs when the slice of structs to encode is empty.
+	ErrEmptySlice = errors.New("struct2csv: the slice of structs was empty")
 )
 
 // Encoder handles encoding of a CSV from a struct.
@@ -249,10 +251,10 @@ func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 	// must be a slice of struct
 	vv := reflect.ValueOf(v)
 	if vv.IsNil() {
-		return nil, NilSliceError
+		return nil, ErrNilSlice
 	}
 	if vv.Len() == 0 {
-		return nil, EmptySliceError
+		return nil, ErrEmptySlice
 	}
 	var rows [][]string
 	s := vv.Index(0)
