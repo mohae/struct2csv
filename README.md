@@ -60,7 +60,7 @@ String
 Struct
 ```
 
-The following `reflect.Kind` are ignored:
+The following `reflect.Kind` are ignored, unless they are the value of a map, in which case they will result in an empty string `""`:
 ```
 Chan
 Func
