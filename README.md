@@ -54,6 +54,7 @@ Complex64
 Complex128
 Array
 Map
+Ptr
 Slice
 String
 Struct
@@ -69,13 +70,13 @@ The following `reflect.Kind` are not supported, or have not yet been implemented
 ```
 Uintptr
 Interface
-Ptr
 UnsafePointer
 ```
 
 ## Notes
+While `func()` and `chan` types are not supported, this package does not detect if a map has a value type of either `func()` or `chan`.  Such maps will become part of the resulting CSV with their values being an empty string `""`.
 
-Pointers have not yet been implemented.
+TODO: add field tag support for `-` so that these fields can be explicitely skipped via field tags.
 
 ### Embedded types
 If a type is embedded, any exported fields within that struct become their own columns with the field name being the column name, unless a field tag has been defined.  The name of the embedded struct does not become part of the column header name.
@@ -108,4 +109,9 @@ If a map or slice type is a struct, the fields of the struct become a comma sepa
 It is possible to get the header row for a struct by calling the `CSVHeaders()` func with the struct for which you want the column names
 
 ## TODO
-Add support pointers
+
+* Add support for field tag value of `-` to explicitely skip fields.
+* Expand testing/validation of map types, esp. ones using pointers.
+* Add option to add names of embedded structs to the column header for its fields.
+* Add additional configuration options to encoder, including uint base.
+* Add support for output via encoding/csv
