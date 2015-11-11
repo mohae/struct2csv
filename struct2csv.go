@@ -75,6 +75,7 @@ func (sv stringValues) get(i int) string   { return sv[i].String() }
 type Encoder struct {
 	// Whether or not tags should be use for header (column) names; by default this is csv,
 	useTags bool
+	base    int
 	tag     string // The tag to use when tags are being used for headers; defaults to csv.
 	sepBeg  string
 	sepEnd  string
@@ -83,7 +84,7 @@ type Encoder struct {
 // New returns an initialized Encoder.
 func New() *Encoder {
 	return &Encoder{
-		useTags: true, tag: "csv",
+		useTags: true, base: 10, tag: "csv",
 		sepBeg: "(", sepEnd: ")",
 	}
 }
@@ -110,6 +111,17 @@ func (e *Encoder) SetUseTags(b bool) {
 func (e *Encoder) SetSeparators(beg, end string) {
 	e.sepBeg = beg
 	e.sepEnd = end
+}
+
+// SetBase sets the base for strings.FormatUint. By default, this is 10. Set
+// the base if another base should be used for formatting uint values.
+//
+// Base 2 is the minimum value; anything less will be set to two.
+func (e *Encoder) SetBase(i int) {
+	if i < 2 {
+		i = 2
+	}
+	e.base = i
 }
 
 // GetHeaders get's the column headers from the received struct.  If anything
@@ -347,7 +359,7 @@ func (e *Encoder) stringify(v reflect.Value) (string, bool) {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return strconv.Itoa(int(v.Int())), true
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return strconv.FormatUint(uint64(v.Uint()), 10), true
+		return strconv.FormatUint(uint64(v.Uint()), e.base), true
 	case reflect.Float32:
 		return strconv.FormatFloat(v.Float(), 'E', -1, 32), true
 	case reflect.Float64:
@@ -388,7 +400,7 @@ func supportedPtrKind(typ reflect.Type) (k, v reflect.Kind, ok bool) {
 	case reflect.Map:
 		return supportedMapKind(typ)
 	case reflect.Struct:
-		fmt.Println("=============\n", "Implement supportedKind STruct\n=============")
+		fmt.Println("=============\n", "Implement supportedKind Struct\n=============")
 	}
 	return typ.Kind(), reflect.Invalid, supportedKind(typ.Kind())
 }
