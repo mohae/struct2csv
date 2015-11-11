@@ -907,7 +907,7 @@ func TestPrivateMarshal(t *testing.T) {
 						goto EQ
 					}
 				}
-EQ:
+			EQ:
 				if !eq {
 					t.Errorf("%d:%d: expected elements to have %q, got %q", i, j, tst.expCols[j], col)
 				}
