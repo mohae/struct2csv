@@ -112,5 +112,4 @@ It is possible to get the header row for a struct by calling the `GetHeaders()` 
 
 * Add support for field tag value of `-` to explicitly skip fields.
 * Add option to add names of embedded structs to the column header for its fields.
-* Add additional configuration options to encoder, including uint base.
 * Add support for output via encoding/csv
