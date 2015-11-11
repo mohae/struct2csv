@@ -3,6 +3,8 @@ package struct2csv
 import (
 	"fmt"
 	"reflect"
+	"sort"
+	"strings"
 	"testing"
 )
 
@@ -895,6 +897,21 @@ func TestPrivateMarshal(t *testing.T) {
 			continue
 		}
 		for j, col := range cols {
+			if tst.isMap {
+				cparts := splitCleanSort(col)
+				eparts := splitCleanSort(tst.expCols[j])
+				eq := true
+				for i := 0; i < len(cparts); i++ {
+					if cparts[i] != eparts[i] {
+						eq = false
+						goto EQ
+					}
+				}
+EQ:
+				if !eq {
+					t.Errorf("%d:%d: expected elements to have %q, got %q", i, j, tst.expCols[j], col)
+				}
+			}
 			if tst.expCols[j] != col {
 				t.Errorf("%d:%d: expected %q, got %q", i, j, tst.expCols[j], col)
 			}
@@ -974,4 +991,14 @@ func pchan(p *chan int) {
 
 func pfunc(p *func()) {
 	*p = func() { fmt.Println("Hello") }
+}
+
+func splitCleanSort(s string) []string {
+	s = strings.Replace(s, "(", "", -1)
+	s = strings.Replace(s, ")", "", -1)
+	s = strings.Replace(s, ",", "", -1)
+	s = strings.Replace(s, ":", " ", -1)
+	parts := strings.Fields(s)
+	sort.Strings(parts)
+	return parts
 }
