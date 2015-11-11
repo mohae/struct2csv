@@ -32,13 +32,11 @@ If a non-slice is received, an error will be returned.  Any error encountered wi
 ### Configuration of an Encoder
 By default, an encoder will use tag fields with the tag `csv`, if they exist, as the column header value for a field. If such a tag does not exist, the column name will be used.  The encoder will also use `(` and `)` as its begin and end separator values.
 
+The separator values can be changed with the `Encoder.SetSeparators(beginSep, endSep)` method.  If the separators are set to `""`, an empty string, nothing will be used.  This mainly applies to lists.
+
 The tag that the encoder uses can be changed by calling `Encoder.SetTag(value)`.
 
 Tags can be ignored by calling `Encoder.SetUseTag(false)`.  This will result in the struct field names being used as the colmn header values.
-
-Separator values can be set by calling `Enconder.SetSeparator(begin, end)`
-
-More customization of the encoder's behavior may be added.
 
 ## Supported types
 The following `reflect.Kind` are supported:  
@@ -96,6 +94,7 @@ If the map's value is a composite type, the values of the composite type become 
     }
 
 becomes:
+
     ((Frank Herbert: (Destination Void, Jesus Incident, Lazurus Effect)),
     (William Gibson:(Neuromancer, Count Zero, Mona Lisa Overdrive)))
 
