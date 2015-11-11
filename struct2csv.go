@@ -74,11 +74,12 @@ func (sv stringValues) get(i int) string   { return sv[i].String() }
 // Encoder handles encoding of a CSV from a struct.
 type Encoder struct {
 	// Whether or not tags should be use for header (column) names; by default this is csv,
-	useTags bool
-	base    int
-	tag     string // The tag to use when tags are being used for headers; defaults to csv.
-	sepBeg  string
-	sepEnd  string
+	useTags  bool
+	base     int
+	tag      string // The tag to use when tags are being used for headers; defaults to csv.
+	sepBeg   string
+	sepEnd   string
+	colNames []string
 }
 
 // New returns an initialized Encoder.
@@ -124,13 +125,22 @@ func (e *Encoder) SetBase(i int) {
 	e.base = i
 }
 
-// GetHeaders get's the column headers from the received struct.  If anything
-// other than a struct is passed, an error will be returned.  If the struct
-// has field tags for csv, those values will be used as the column headers,
-// otherwise the field names will be used.
+// Headers returns the encoder's save header fields as a copy.  The colNames
+// field must be populated by Encoder.GetHeaders()
+func (e *Encoder) Headers() []string {
+	ret := make([]string, len(e.colNames))
+	_ = copy(ret, e.colNames)
+	return ret
+}
+
+// Headers get's the column headers from the received struct.  If anything
+// other than a struct is passed, an error will be returned.
 //
-// If field tags other than the ones for csv are to be used, TODO figure out
-// the struct and how to implement this comment.
+// Field tags are supported. By default, the column names will be the value
+// of the `csv` tag, if any.  This can be changed with the SetTag(newTag)
+// func; e.g. `json` to use JSON tags.  Use of field tags can be toggled with
+// the the SetUseTag(bool) func.  If use of field tags is set to FALSE, the
+// field's name will be used.
 func (e *Encoder) GetHeaders(v interface{}) ([]string, error) {
 	if reflect.TypeOf(v).Kind() != reflect.Struct {
 		return nil, StructRequiredError{reflect.TypeOf(v).Kind()}
@@ -138,6 +148,8 @@ func (e *Encoder) GetHeaders(v interface{}) ([]string, error) {
 	return e.getHeaders(v)
 }
 
+// The private func where the work is done.  This also copies the headers
+// to the Encoder.colNames field.  This is a copy of the slice contents.
 func (e *Encoder) getHeaders(v interface{}) ([]string, error) {
 	st := reflect.TypeOf(v)
 	sv := reflect.ValueOf(v)
@@ -186,7 +198,16 @@ func (e *Encoder) getHeaders(v interface{}) ([]string, error) {
 		}
 		hdrs = append(hdrs, name)
 	}
+	e.colNames = make([]string, len(hdrs))
+	_ = copy(e.colNames, hdrs)
 	return hdrs, nil
+}
+
+// GetRow get's the data from the passed struct. This only operates on
+// single structs.  If you wish to transmogrify everything at once, use
+// Encoder.Marshal([]T).
+func (e *Encoder) GetRow(v interface{}) ([]string, error) {
+	return e.marshalStruct(v)
 }
 
 // Marshal takes a slice of structs and returns a [][]byte representing CSV
@@ -197,8 +218,6 @@ func (e *Encoder) getHeaders(v interface{}) ([]string, error) {
 //
 // If the passed data isn't a slice of structs or an error occurs during
 // processing, an error will be returned.
-// TODO:
-//    handle pointers
 func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 	// must be a slice
 	if reflect.TypeOf(v).Kind() != reflect.Slice {
@@ -503,12 +522,4 @@ func supportedKind(k reflect.Kind) bool {
 		return false
 	}
 	return true
-}
-
-// GetHeaders instantiates a Encoder and gets the headers of the received
-// struct.  If you need more control over tag processing, use New(),
-// set accordingly, and call Encoder's GetHeaders().
-func GetHeaders(v interface{}) ([]string, error) {
-	tc := New()
-	return tc.GetHeaders(v)
 }

@@ -222,7 +222,8 @@ func TestNew(t *testing.T) {
 }
 
 func TestGetHeaders(t *testing.T) {
-	_, err := GetHeaders([]string{"a", "b", "c"})
+	tc := New()
+	_, err := tc.GetHeaders([]string{"a", "b", "c"})
 	if err == nil {
 		t.Error("expected passing of a non struct to result in an error, none received")
 	} else {
@@ -230,7 +231,6 @@ func TestGetHeaders(t *testing.T) {
 			t.Errorf("expected error to be \"struct2csv: a value of type struct is required: type was slice\", got %q", err)
 		}
 	}
-	tc := New()
 	tc.useTags = false
 	tst := Tst{}
 	expectedHeaders := []string{"Int", "Ints", "String", "Strings", "StringString", "StringInt", "IntInt"}
@@ -628,6 +628,18 @@ func TestMarshalStructs(t *testing.T) {
 		for j, col := range row {
 			if col != expected[i][j] {
 				t.Errorf("%d:%d: expected %v got %v", i, j, expected[i][j], col)
+			}
+		}
+	}
+	// test GetRow
+	for i, tst := range Tsts {
+		row, err := tc.GetRow(tst)
+		if err != nil {
+			t.Errorf("Unexpected error")
+		}
+		for j, col := range row {
+			if col != expected[i+1][j] {
+				t.Errorf("%d:%d: expected %v, got %v", i, j, expected[i+1][j], col)
 			}
 		}
 	}
