@@ -22,12 +22,29 @@ If a non-slice is received, an error will be returned.  Any error encountered wi
 
     import github.com/mohae/struct2csv
 
-    var data []MyStruct
+    // transorm everything to csv
+    data := []MyStruct{MyStruct{}, MyStruct{}}
     enc := struct2csv.New()
     rows, err := enc.Marshal(data)
     if err != nil {
-        // handle error
+            // handle error
     }
+
+    // transform each slice to csv
+    var rows [][]string
+    colhdrs, err := enc.GetHeaders(data[0])
+    if err != nil {
+            // handle error
+    }
+    rows = append(rows, colhdrs)
+    for _, v := range data {
+            row, err := enc.GetRow(v)
+            if err != nil {
+                    // handle error
+            }
+            rows = append(rows, row)
+    }
+
 
 ### Configuration of an Encoder
 By default, an encoder will use tag fields with the tag `csv`, if they exist, as the column header value for a field. If such a tag does not exist, the column name will be used.  The encoder will also use `(` and `)` as its begin and end separator values.
