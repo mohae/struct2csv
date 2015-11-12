@@ -125,35 +125,35 @@ func (e *Encoder) SetBase(i int) {
 	e.base = i
 }
 
-// Headers returns the encoder's save header fields as a copy.  The colNames
-// field must be populated by Encoder.GetHeaders()
-func (e *Encoder) Headers() []string {
+// ColNames returns the encoder's saved column names as a copy.  The
+// colNames field must be populated before using this.
+func (e *Encoder) ColNames() []string {
 	ret := make([]string, len(e.colNames))
 	_ = copy(ret, e.colNames)
 	return ret
 }
 
-// Headers get's the column headers from the received struct.  If anything
-// other than a struct is passed, an error will be returned.
+// GetColNames get's the column names from the received struct.  If the
+// interface is not a struct, an error will occur.
 //
 // Field tags are supported. By default, the column names will be the value
 // of the `csv` tag, if any.  This can be changed with the SetTag(newTag)
 // func; e.g. `json` to use JSON tags.  Use of field tags can be toggled with
 // the the SetUseTag(bool) func.  If use of field tags is set to FALSE, the
 // field's name will be used.
-func (e *Encoder) GetHeaders(v interface{}) ([]string, error) {
+func (e *Encoder) GetColNames(v interface{}) ([]string, error) {
 	if reflect.TypeOf(v).Kind() != reflect.Struct {
 		return nil, StructRequiredError{reflect.TypeOf(v).Kind()}
 	}
-	return e.getHeaders(v)
+	return e.getColNames(v)
 }
 
 // The private func where the work is done.  This also copies the headers
 // to the Encoder.colNames field.  This is a copy of the slice contents.
-func (e *Encoder) getHeaders(v interface{}) ([]string, error) {
+func (e *Encoder) getColNames(v interface{}) ([]string, error) {
 	st := reflect.TypeOf(v)
 	sv := reflect.ValueOf(v)
-	var hdrs []string
+	var cols []string
 	for i := 0; i < st.NumField(); i++ {
 		// skip unexported
 		ft := st.Field(i)
@@ -166,11 +166,11 @@ func (e *Encoder) getHeaders(v interface{}) ([]string, error) {
 		}
 		switch fv.Kind() {
 		case reflect.Struct:
-			tmp, err := e.getHeaders(fv.Interface())
+			tmp, err := e.getColNames(fv.Interface())
 			if err != nil {
 				return nil, err
 			}
-			hdrs = append(hdrs, tmp...)
+			cols = append(cols, tmp...)
 			continue
 		case reflect.Array, reflect.Slice:
 			_, ok := supportedSliceKind(fv.Type())
@@ -196,11 +196,11 @@ func (e *Encoder) getHeaders(v interface{}) ([]string, error) {
 		if name == "" {
 			name = ft.Name
 		}
-		hdrs = append(hdrs, name)
+		cols = append(cols, name)
 	}
-	e.colNames = make([]string, len(hdrs))
-	_ = copy(e.colNames, hdrs)
-	return hdrs, nil
+	e.colNames = make([]string, len(cols))
+	_ = copy(e.colNames, cols)
+	return cols, nil
 }
 
 // GetRow get's the data from the passed struct. This only operates on
@@ -235,11 +235,11 @@ func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 	s := val.Index(0)
 	switch s.Kind() {
 	case reflect.Struct:
-		hdrs, err := e.getHeaders(s.Interface())
+		cols, err := e.getColNames(s.Interface())
 		if err != nil {
 			return nil, err
 		}
-		rows = append(rows, hdrs)
+		rows = append(rows, cols)
 	default:
 		return nil, StructSliceError{Kind: reflect.Slice, SliceKind: s.Kind()}
 	}

@@ -221,9 +221,9 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestGetHeaders(t *testing.T) {
+func TestGetColNames(t *testing.T) {
 	tc := New()
-	_, err := tc.GetHeaders([]string{"a", "b", "c"})
+	_, err := tc.GetColNames([]string{"a", "b", "c"})
 	if err == nil {
 		t.Error("expected passing of a non struct to result in an error, none received")
 	} else {
@@ -233,95 +233,95 @@ func TestGetHeaders(t *testing.T) {
 	}
 	tc.useTags = false
 	tst := Tst{}
-	expectedHeaders := []string{"Int", "Ints", "String", "Strings", "StringString", "StringInt", "IntInt"}
-	hdr, err := tc.GetHeaders(tst)
+	expectedColNames := []string{"Int", "Ints", "String", "Strings", "StringString", "StringInt", "IntInt"}
+	hdr, err := tc.GetColNames(tst)
 	if err != nil {
 		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
 		goto IGNORETAG
 	}
-	if len(hdr) != len(expectedHeaders) {
-		t.Errorf("Expected %d column headers, got %d", len(expectedHeaders), len(hdr))
+	if len(hdr) != len(expectedColNames) {
+		t.Errorf("Expected %d column ColNames, got %d", len(expectedColNames), len(hdr))
 		goto IGNORETAG
 	}
 	for i, v := range hdr {
-		if v != expectedHeaders[i] {
-			t.Errorf("%d: expected %q got %q", i, expectedHeaders[i], v)
+		if v != expectedColNames[i] {
+			t.Errorf("%d: expected %q got %q", i, expectedColNames[i], v)
 		}
 	}
 
 IGNORETAG:
 	tc.useTags = false
 	test := TstTags{}
-	expectedHeaders = []string{"Int", "Ints", "String", "Strings", "StringString", "StringInt", "IntInt"}
-	hdr, err = tc.GetHeaders(test)
+	expectedColNames = []string{"Int", "Ints", "String", "Strings", "StringString", "StringInt", "IntInt"}
+	hdr, err = tc.GetColNames(test)
 	if err != nil {
 		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
 		goto CSVTAG
 	}
-	if len(hdr) != len(expectedHeaders) {
-		t.Errorf("Expected %d column headers, got %d", len(expectedHeaders), len(hdr))
+	if len(hdr) != len(expectedColNames) {
+		t.Errorf("Expected %d column ColNames, got %d", len(expectedColNames), len(hdr))
 		goto CSVTAG
 	}
 	for i, v := range hdr {
-		if v != expectedHeaders[i] {
-			t.Errorf("%d: expected %q got %q", i, expectedHeaders[i], v)
+		if v != expectedColNames[i] {
+			t.Errorf("%d: expected %q got %q", i, expectedColNames[i], v)
 		}
 	}
 
 CSVTAG:
 	// test using CSV tags
 	tc.useTags = true
-	expectedHeaders = []string{"Number", "Numbers", "Word", "Words", "MapStringString", "MapStringInt", "MapIntInt"}
-	hdr, err = tc.GetHeaders(TstTags{})
+	expectedColNames = []string{"Number", "Numbers", "Word", "Words", "MapStringString", "MapStringInt", "MapIntInt"}
+	hdr, err = tc.GetColNames(TstTags{})
 	if err != nil {
 		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
 		goto JSONTAG
 	}
-	if len(hdr) != len(expectedHeaders) {
-		t.Errorf("Expected %d column headers, got %d", len(expectedHeaders), len(hdr))
+	if len(hdr) != len(expectedColNames) {
+		t.Errorf("Expected %d column ColNames, got %d", len(expectedColNames), len(hdr))
 		goto JSONTAG
 	}
 	for i, v := range hdr {
-		if v != expectedHeaders[i] {
-			t.Errorf("%d: expected %q got %q", i, expectedHeaders[i], v)
+		if v != expectedColNames[i] {
+			t.Errorf("%d: expected %q got %q", i, expectedColNames[i], v)
 		}
 	}
 
 JSONTAG:
 	// test using CSV tags
-	expectedHeaders = []string{"number", "numbers", "word", "words", "mapstringstring", "mapstringint", "mapintint"}
+	expectedColNames = []string{"number", "numbers", "word", "words", "mapstringstring", "mapstringint", "mapintint"}
 	tc.useTags = true
 	tc.tag = "json"
-	hdr, err = tc.GetHeaders(TstTags{})
+	hdr, err = tc.GetColNames(TstTags{})
 	if err != nil {
 		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
 		goto EMBED
 	}
-	if len(hdr) != len(expectedHeaders) {
-		t.Errorf("Expected %d column headers, got %d", len(expectedHeaders), len(hdr))
+	if len(hdr) != len(expectedColNames) {
+		t.Errorf("Expected %d column ColNames, got %d", len(expectedColNames), len(hdr))
 		goto EMBED
 	}
 	for i, v := range hdr {
-		if v != expectedHeaders[i] {
-			t.Errorf("%d: expected %q got %q", i, expectedHeaders[i], v)
+		if v != expectedColNames[i] {
+			t.Errorf("%d: expected %q got %q", i, expectedColNames[i], v)
 		}
 	}
 
 EMBED:
-	expectedHeaders = []string{"Name", "ID", "Addr1", "Addr2", "City", "State", "Zip", "Phone", "Lat", "Long", "Notes", "Stuff"}
-	hdr, err = tc.GetHeaders(TstEmbed{})
+	expectedColNames = []string{"Name", "ID", "Addr1", "Addr2", "City", "State", "Zip", "Phone", "Lat", "Long", "Notes", "Stuff"}
+	hdr, err = tc.GetColNames(TstEmbed{})
 	if err != nil {
 		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
 		return
 	}
-	if len(hdr) != len(expectedHeaders) {
-		t.Errorf("Expected %d column headers, got %d", len(expectedHeaders), len(hdr))
+	if len(hdr) != len(expectedColNames) {
+		t.Errorf("Expected %d column ColNames, got %d", len(expectedColNames), len(hdr))
 		t.Errorf("%#v\n", hdr)
 		return
 	}
 	for i, v := range hdr {
-		if v != expectedHeaders[i] {
-			t.Errorf("%d: expected %q got %q", i, expectedHeaders[i], v)
+		if v != expectedColNames[i] {
+			t.Errorf("%d: expected %q got %q", i, expectedColNames[i], v)
 		}
 	}
 }
@@ -923,6 +923,7 @@ func TestPrivateMarshal(t *testing.T) {
 				if !eq {
 					t.Errorf("%d:%d: expected elements to have %q, got %q", i, j, tst.expCols[j], col)
 				}
+				continue
 			}
 			if tst.expCols[j] != col {
 				t.Errorf("%d:%d: expected %q, got %q", i, j, tst.expCols[j], col)
