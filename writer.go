@@ -157,32 +157,3 @@ func (w *Writer) SetBase(i int) {
 func (w *Writer) ColNames() []string {
 	return w.e.ColNames()
 }
-
-// GetColNames returns the names of all the exported fields in the passed
-// struct{}.  The encoder will save a copy of the column (field) names.
-func (w *Writer) GetColNames(v interface{}) ([]string, error) {
-	return w.e.GetColNames(v)
-}
-
-// MarshalRow returns the struct{} data as a row of columns (strings).
-func (w *Writer) MarshalRow(v interface{}) ([]string, error) {
-	row, err := w.e.marshalStruct(v)
-	if err != nil {
-		return nil, err
-	}
-	w.r++
-	return row, err
-}
-
-// Marshal takes a slice of structs and marshals them, returning a [][]string
-// representing the rows and columns of the CSV data.
-//
-// Unexported fields and fields of unsupported types are skipped.
-func (w *Writer) Marshal(v interface{}) ([][]string, error) {
-	rows, err := w.e.Marshal(v)
-	if err != nil {
-		return rows, err
-	}
-	w.r++
-	return rows, nil
-}

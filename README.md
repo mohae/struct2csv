@@ -19,10 +19,11 @@ Only exported columns become part of the csv data.  Some types, like channels an
 If a non-slice is received, an error will be returned.  Any error encountered will be returned.
 
 ## Usage
+### Using Directly
+A new encoder can be created with the `New()` func.  This will return a new encoder initalized with default value.  The encoder can be configured using it's exposed methods.  When using the encoder, all data is returned as `[]string` or `[][]string` values.  It is your responsibility to encode it to CSV using `encoding/csv`.
 
-    import github.com/mohae/struct2csv
+#### Extract data from a slice of structs:
 
-    // transorm everything to csv
     data := []MyStruct{MyStruct{}, MyStruct{}}
     enc := struct2csv.New()
     rows, err := enc.Marshal(data)
@@ -30,13 +31,18 @@ If a non-slice is received, an error will be returned.  Any error encountered wi
             // handle error
     }
 
-    // transform each slice to csv
+#### Extract data from a slice of structs; one at a time:
+
+    data := []MyStruct{MyStruct{}, MyStruct{}}
+    enc := struct2csv.New()
     var rows [][]string
+    // get the column names first
     colhdrs, err := enc.GetHeaders(data[0])
     if err != nil {
             // handle error
     }
     rows = append(rows, colhdrs)
+    // get the data from each struct
     for _, v := range data {
             row, err := enc.GetRow(v)
             if err != nil {
@@ -45,6 +51,42 @@ If a non-slice is received, an error will be returned.  Any error encountered wi
             rows = append(rows, row)
     }
 
+### Using with the Writer
+A writer can be created by passing an `io.Writer` to `NewWriter(w)` and using it's methods. The Writer wraps encoding/csv's Writer and struct2csv's Encoder.
+
+This Writer exposes csv,Writer's methods using wrapper methods.  Struct2csv's Writer has additional methods for configuring the encoder and working with Structs.
+
+#### Create CSV from a slice of structs:
+
+    data := []MyStruct{MyStruct{}, MyStruct{}}
+    buff := &bytes.Buffer{}
+    w := struct2csv.NewWriter(buff)
+    err := w.WriteStructs(data)
+    if err != nil {
+            // handle error
+    }
+
+#### Extract data from a slice of structs; one at a time:
+
+    data := []MyStruct{MyStruct{}, MyStruct{}}
+    buff := &bytes.Buffer{}
+    w := struct2csv.NewWriter(buff)
+    // set the column names first
+    err := w.WriteColNames(data[0])
+    if err != nil {
+            // handle error
+    }
+    // get the data from each struct
+    for _, v := range data {
+            err = w.WriteStruct
+            if err != nil {
+                    // handle error
+            }
+            rows = append(rows, row)
+    }
+    // must flush the writer
+    w.Flush()
+    fmt.Println(buff.String())
 
 ### Configuration of an Encoder
 By default, an encoder will use tag fields with the tag `csv`, if they exist, as the column header value for a field. If such a tag does not exist, the column name will be used.  The encoder will also use `(` and `)` as its begin and end separator values.
@@ -128,4 +170,3 @@ It is possible to get the header row for a struct by calling the `GetHeaders()` 
 
 * Add support for field tag value of `-` to explicitly skip fields.
 * Add option to add names of embedded structs to the column header for its fields.
-* Add support for output via encoding/csv
