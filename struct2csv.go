@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
-	"strings"
+//	"strings"
 )
 
 // An UnsupportedTypeError is returned when attempting to encode an
@@ -275,7 +275,6 @@ func (e *Encoder) marshal(val reflect.Value) (cols []string, err error) {
 		if err != nil {
 			return nil, err
 		}
-		s = fmt.Sprintf("%s%s%s", e.sepBeg, s, e.sepEnd)
 	default:
 		var ok bool
 		s, ok = e.stringify(val)
@@ -317,6 +316,7 @@ func (e *Encoder) marshalMap(m reflect.Value) (string, error) {
 		}
 		return "", UnsupportedTypeError{kind: k, method: "marshalMap"}
 	}
+	// get the kind of the map value
 	var row string
 	var sv stringValues = m.MapKeys()
 	// sort the map keys first
@@ -331,6 +331,7 @@ func (e *Encoder) marshalMap(m reflect.Value) (string, error) {
 		if !ok {
 			return "", UnsupportedTypeError{kind: key.Kind(), method: "marshalMap"}
 		}
+
 		if i == 0 {
 			row = fmt.Sprintf("%s:%s", kk, vv)
 		} else {
@@ -389,20 +390,20 @@ func (e *Encoder) stringify(v reflect.Value) (string, bool) {
 		return v.String(), true
 	case reflect.Ptr:
 		return e.stringify(v.Elem())
-	default:
-		cols, err := e.marshal(v)
-		if err != nil {
-			return "", false
-		}
-		r := cols[0]
-		for i := 1; i < len(cols); i++ {
-			r = fmt.Sprintf("%s,%s", r, cols[i])
-		}
-		if strings.HasPrefix(r, "(") {
-			return r, true
-		}
-		return fmt.Sprintf("%s%s%s", e.sepBeg, r, e.sepEnd), true
 	}
+	cols, err := e.marshal(v)
+	if err != nil {
+		return "", false
+	}
+	r := cols[0]
+	for i := 1; i < len(cols); i++ {
+		r = fmt.Sprintf("%s,%s", r, cols[i])
+	}
+	if v.Kind() == reflect.Slice || v.Kind() == reflect.Array {
+		return r, true
+	}
+	return fmt.Sprintf("%s%s%s", e.sepBeg, r, e.sepEnd), true
+
 }
 
 func supportedPtrKind(typ reflect.Type) (k, v reflect.Kind, ok bool) {
@@ -437,7 +438,6 @@ func supportedMapKind(t reflect.Type) (k, v reflect.Kind, ok bool) {
 	}
 	return k, v, true
 }
-
 func mapKind(t reflect.Type) (k, v reflect.Kind, is bool) {
 	switch t.Kind() {
 	case reflect.Ptr:

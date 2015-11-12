@@ -72,36 +72,36 @@ var structTests = []struct {
 	{[]Basic{}, false, "", "\n", "struct2csv: the slice of structs was empty"},
 	{[]Basic{
 		Basic{Name: "Fyodor Dostoyevsky", List: []string{"Brothers Karamazov", "Crime and Punishment"}},
-	}, true, "csv", "Nom,Liste\nFyodor Dostoyevsky,\"(Brothers Karamazov,Crime and Punishment)\"\n", ""},
+	}, true, "csv", "Nom,Liste\nFyodor Dostoyevsky,\"Brothers Karamazov,Crime and Punishment\"\n", ""},
 	{[]Basic{
 		Basic{Name: "Fyodor Dostoyevsky", List: []string{"Brothers Karamazov", "Crime and Punishment"}},
-	}, true, "json", "name,list\nFyodor Dostoyevsky,\"(Brothers Karamazov,Crime and Punishment)\"\n", ""},
+	}, true, "json", "name,list\nFyodor Dostoyevsky,\"Brothers Karamazov,Crime and Punishment\"\n", ""},
 	{[]Basic{
 		Basic{Name: "Fyodor Dostoyevsky", List: []string{"Brothers Karamazov", "Crime and Punishment"}},
-	}, true, "", "Nom,Liste\nFyodor Dostoyevsky,\"(Brothers Karamazov,Crime and Punishment)\"\n", ""},
+	}, true, "", "Nom,Liste\nFyodor Dostoyevsky,\"Brothers Karamazov,Crime and Punishment\"\n", ""},
 	{[]Basic{
 		Basic{Name: "Fyodor Dostoyevsky", List: []string{"Brothers Karamazov", "Crime and Punishment"}},
-	}, false, "", "Name,List\nFyodor Dostoyevsky,\"(Brothers Karamazov,Crime and Punishment)\"\n", ""},
+	}, false, "", "Name,List\nFyodor Dostoyevsky,\"Brothers Karamazov,Crime and Punishment\"\n", ""},
 	{[]Basic{
 		Basic{Name: "Anatoly Rybakov", List: []string{"Children of the Arbat", "Fear", "Dust and Ashes"}},
 		Basic{Name: "Vladimir Nabokov", List: []string{"Lolita", "Pnin", "Pale Fire"}},
 	}, true, "csv",
-		"Nom,Liste\nAnatoly Rybakov,\"(Children of the Arbat,Fear,Dust and Ashes)\"\nVladimir Nabokov,\"(Lolita,Pnin,Pale Fire)\"\n", ""},
+		"Nom,Liste\nAnatoly Rybakov,\"Children of the Arbat,Fear,Dust and Ashes\"\nVladimir Nabokov,\"Lolita,Pnin,Pale Fire\"\n", ""},
 	{[]Basic{
 		Basic{Name: "Anatoly Rybakov", List: []string{"Children of the Arbat", "Fear", "Dust and Ashes"}},
 		Basic{Name: "Vladimir Nabokov", List: []string{"Lolita", "Pnin", "Pale Fire"}},
 	}, true, "json",
-		"name,list\nAnatoly Rybakov,\"(Children of the Arbat,Fear,Dust and Ashes)\"\nVladimir Nabokov,\"(Lolita,Pnin,Pale Fire)\"\n", ""},
+		"name,list\nAnatoly Rybakov,\"Children of the Arbat,Fear,Dust and Ashes\"\nVladimir Nabokov,\"Lolita,Pnin,Pale Fire\"\n", ""},
 	{[]Basic{
 		Basic{Name: "Anatoly Rybakov", List: []string{"Children of the Arbat", "Fear", "Dust and Ashes"}},
 		Basic{Name: "Vladimir Nabokov", List: []string{"Lolita", "Pnin", "Pale Fire"}},
 	}, true, "",
-		"Nom,Liste\nAnatoly Rybakov,\"(Children of the Arbat,Fear,Dust and Ashes)\"\nVladimir Nabokov,\"(Lolita,Pnin,Pale Fire)\"\n", ""},
+		"Nom,Liste\nAnatoly Rybakov,\"Children of the Arbat,Fear,Dust and Ashes\"\nVladimir Nabokov,\"Lolita,Pnin,Pale Fire\"\n", ""},
 	{[]Basic{
 		Basic{Name: "Anatoly Rybakov", List: []string{"Children of the Arbat", "Fear", "Dust and Ashes"}},
 		Basic{Name: "Vladimir Nabokov", List: []string{"Lolita", "Pnin", "Pale Fire"}},
 	}, false, "",
-		"Name,List\nAnatoly Rybakov,\"(Children of the Arbat,Fear,Dust and Ashes)\"\nVladimir Nabokov,\"(Lolita,Pnin,Pale Fire)\"\n", ""},
+		"Name,List\nAnatoly Rybakov,\"Children of the Arbat,Fear,Dust and Ashes\"\nVladimir Nabokov,\"Lolita,Pnin,Pale Fire\"\n", ""},
 }
 
 func TestStructs(t *testing.T) {
@@ -148,5 +148,20 @@ func TestStructs(t *testing.T) {
 		if s != test.Output {
 			t.Errorf("%d: got %s, want %s", i, s, test.Output)
 		}
+	}
+}
+
+func TestWriteStructsComplex(t *testing.T) {
+	expected := ""
+	buff := &bytes.Buffer{}
+	w := NewWriter(buff)
+	err := w.WriteStructs(complexTests)
+	if err != nil {
+		t.Errorf("unexpected error: %s",  err)
+		return
+	}
+	s := buff.String()
+	if s != expected {
+		t.Errorf("got %s, want %s", s, expected)
 	}
 }
