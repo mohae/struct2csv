@@ -334,7 +334,7 @@ func (e *Encoder) marshalMap(m reflect.Value) (string, error) {
 		if i == 0 {
 			row = fmt.Sprintf("%s:%s", kk, vv)
 		} else {
-			row = fmt.Sprintf("%s, %s:%s", row, kk, vv)
+			row = fmt.Sprintf("%s,%s:%s", row, kk, vv)
 		}
 	}
 	return row, nil
@@ -360,7 +360,7 @@ func (e *Encoder) marshalSlice(val reflect.Value) (string, error) {
 			sl = str
 			continue
 		}
-		sl = fmt.Sprintf("%s, %s", sl, str)
+		sl = fmt.Sprintf("%s,%s", sl, str)
 	}
 	return sl, nil
 }
@@ -396,7 +396,7 @@ func (e *Encoder) stringify(v reflect.Value) (string, bool) {
 		}
 		r := cols[0]
 		for i := 1; i < len(cols); i++ {
-			r = fmt.Sprintf("%s, %s", r, cols[i])
+			r = fmt.Sprintf("%s,%s", r, cols[i])
 		}
 		if strings.HasPrefix(r, "(") {
 			return r, true

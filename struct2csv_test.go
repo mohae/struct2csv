@@ -95,14 +95,14 @@ var (
 var expectedEmbedded = [][]string{
 	[]string{"Name", "ID", "Addr1", "Addr2", "City", "State", "Zip", "Phone", "Lat", "Long", "Notes", "Stuff"},
 	[]string{"United Center", "1", "1901 W. Madison St.", "", "Chicago", "IL", "60612",
-		"(312) 455-4500", "41.8806", "-87.6742", "NBA:Bulls, NHL:Blackhawks", ""},
+		"(312) 455-4500", "41.8806", "-87.6742", "NBA:Bulls,NHL:Blackhawks", ""},
 	[]string{"Wrigley Field", "1906", "1060 W. Addison St.", "Broadcast Booth", "Chicago", "IL", "60613",
-		"(773) 404-2827", "41.9483", "-87.6556", "MLB:Cubs", "Harry Caray:Holy Cow, Jack Brickhouse:Hey Hey"},
+		"(773) 404-2827", "41.9483", "-87.6556", "MLB:Cubs", "Harry Caray:Holy Cow,Jack Brickhouse:Hey Hey"},
 }
 
 type Basic struct {
-	Name string
-	List []string
+	Name string `json:"name" csv:"Nom"`
+	List []string `json:"list" csv:"Liste"`
 }
 
 type BaseSliceTypes struct {
@@ -478,38 +478,38 @@ func TestMarshal(t *testing.T) {
 			"Complex64", "Complex64s", "AComplex64",
 			"Complex128", "Complex128s", "AComplex128",
 			"String", "Strings", "AString"},
-		[]string{"true", "(true, false, true)", "(true, false)",
-			"42", "(72, 76, 88, 19, 2)", "(1, 2)",
-			"8", "(8, 9, 10)", "(3, 4)",
-			"16", "(16, 17, 18)", "(5, 6)",
-			"32", "(32, 33, 34)", "(7, 8)",
-			"64", "(64, 65, 66)", "(9, 10)",
-			"42", "(72, 76, 88, 19, 2)", "(35, 21)",
-			"8", "(8, 9, 10)", "(11, 12)",
-			"16", "(16, 17, 18)", "(13, 14)",
-			"32", "(32, 33, 34)", "(15, 16)",
-			"64", "(64, 65, 66)", "(17, 18)",
-			"3.242E+01", "(3.242E+01, 3.3E+01, 3.44E+01)", "(3.55E+01, 3.6754E+01)",
-			"6.442E+01", "(6.442E+01, 6.5E+01, 6.67E+01)", "(6.902E+01, 6.90132E+01)",
-			"(-64+12i)", "((-65+11i), (66+10i))", "((-61+21i), (76+8i))",
-			"(-128+12i)", "((-128+11i), (129+10i))", "((-118+2i), (131+5i))",
-			"don't panic", "()", "(pangalactic, gargleblaster)"},
-		[]string{"true", "(true, true, false)", "(true, false)",
-			"420", "(1, 2, 3, 4)", "(11, 12)",
-			"18", "(18, 19, 110)", "(13, 14)",
-			"116", "(116, 117, 118)", "(15, 16)",
-			"132", "(132, 133, 134)", "(17, 18)",
-			"640", "(164, 165, 166)", "(19, 110)",
-			"421", "(121, 122, 123)", "(35, 21)",
-			"118", "(118, 119, 110)", "(111, 112)",
-			"160", "(116, 117, 118)", "(113, 114)",
-			"320", "(132, 133, 134)", "(115, 116)",
-			"641", "(164, 165, 166)", "(117, 118)",
-			"1.3242E+02", "(1.3242E+02, 1.33E+02, 1.344E+02)", "(1.355E+02, 1.36754E+02)",
-			"1.6442E+02", "(1.6442E+02, 1.65E+02, 1.667E+02)", "(1.6902E+02, 1.690132E+02)",
-			"(-164+12i)", "((-165+11i), (166+10i))", "((-161+21i), (176+8i))",
-			"(-124+12i)", "((-126+11i), (229+10i))", "((-116+2i), (231+5i))",
-			"Towel", "()", "(Zaphod, Beeblebrox)"},
+		[]string{"true", "(true,false,true)", "(true,false)",
+			"42", "(72,76,88,19,2)", "(1,2)",
+			"8", "(8,9,10)", "(3,4)",
+			"16", "(16,17,18)", "(5,6)",
+			"32", "(32,33,34)", "(7,8)",
+			"64", "(64,65,66)", "(9,10)",
+			"42", "(72,76,88,19,2)", "(35,21)",
+			"8", "(8,9,10)", "(11,12)",
+			"16", "(16,17,18)", "(13,14)",
+			"32", "(32,33,34)", "(15,16)",
+			"64", "(64,65,66)", "(17,18)",
+			"3.242E+01", "(3.242E+01,3.3E+01,3.44E+01)", "(3.55E+01,3.6754E+01)",
+			"6.442E+01", "(6.442E+01,6.5E+01,6.67E+01)", "(6.902E+01,6.90132E+01)",
+			"(-64+12i)", "((-65+11i),(66+10i))", "((-61+21i),(76+8i))",
+			"(-128+12i)", "((-128+11i),(129+10i))", "((-118+2i),(131+5i))",
+			"don't panic", "()", "(pangalactic,gargleblaster)"},
+		[]string{"true", "(true,true,false)", "(true,false)",
+			"420", "(1,2,3,4)", "(11,12)",
+			"18", "(18,19,110)", "(13,14)",
+			"116", "(116,117,118)", "(15,16)",
+			"132", "(132,133,134)", "(17,18)",
+			"640", "(164,165,166)", "(19,110)",
+			"421", "(121,122,123)", "(35,21)",
+			"118", "(118,119,110)", "(111,112)",
+			"160", "(116,117,118)", "(113,114)",
+			"320", "(132,133,134)", "(115,116)",
+			"641", "(164,165,166)", "(117,118)",
+			"1.3242E+02", "(1.3242E+02,1.33E+02,1.344E+02)", "(1.355E+02,1.36754E+02)",
+			"1.6442E+02", "(1.6442E+02,1.65E+02,1.667E+02)", "(1.6902E+02,1.690132E+02)",
+			"(-164+12i)", "((-165+11i),(166+10i))","((-161+21i),(176+8i))",
+			"(-124+12i)", "((-126+11i),(229+10i))","((-116+2i),(231+5i))",
+			"Towel", "()", "(Zaphod,Beeblebrox)"},
 	}
 	tc := New()
 	data, err := tc.Marshal(Tags{})
@@ -628,11 +628,11 @@ func TestPtrStructs(t *testing.T) {
 	expected := [][]string{
 		[]string{"MapBasicP", "MapBasicSliceP", "MapPBasicSlice", "PMapPBasicSlice", "PMapPPBasicSlice"},
 		[]string{
-			"MapBasicP:(Jason Bourne, (keystone))",
+			"MapBasicP:(Jason Bourne,(keystone))",
 			"MapBasicSliceP:()",
-			"MapPBasicSlice:((Foo, (bar, baz)))",
-			"parks:((Wyoming, (Yellowstone, Grand Tetons)))",
-			"parks:((Wyoming, (Yellowstone, Grand Tetons)))",
+			"MapPBasicSlice:((Foo,(bar,baz)))",
+			"parks:((Wyoming,(Yellowstone,Grand Tetons)))",
+			"parks:((Wyoming,(Yellowstone,Grand Tetons)))",
 		},
 		[]string{"", "", "", "", ""},
 	}
@@ -700,12 +700,12 @@ func TestComplicated(t *testing.T) {
 
 	expected := [][]string{
 		[]string{"MapMap", "MapSlice", "Map2DSlice", "MapBasic", "MapBasicSlice", "MapBasic2DSlice"},
-		[]string{"Region 1:(colo1:rack1, colo2:rack2), Region 2:(colo11:rack11, colo12:rack12)",
-			"Canada:(Alberta, British Columbia, Quebec), USA:(California, Florida, New York)",
-			"Canada:((Calgary, Edmonton, FortMcMurray), (Winnipeg)), USA:((San Diego, Los Angeles))",
-			"Gibson:(William Gibson, (Neuromancer, Count Zero, Mona Lisa Overdrive)), Herbert:(Frank Herbert, (Destination Void, Jesus Incident, Lazurus Effect))",
-			"SciFi:((William Gibson, (Neuromancer, Count Zero, Mona Lisa Overdrive)), (Frank Herbert, (Destination Void, Jesus Incident, Lazurus Effect)))",
-			"Sci-Fi:(((William Gibson, (Neuromancer, Count Zero, Mona Lisa Overdrive)), (Frank Herbert, (Destination Void, Jesus Incident, Lazurus Effect))), ((Douglas Adams, (Restaurant at the End of the Universe))))",
+		[]string{"Region 1:(colo1:rack1,colo2:rack2),Region 2:(colo11:rack11,colo12:rack12)",
+			"Canada:(Alberta,British Columbia,Quebec),USA:(California,Florida,New York)",
+			"Canada:((Calgary,Edmonton,FortMcMurray),(Winnipeg)),USA:((San Diego,Los Angeles))",
+			"Gibson:(William Gibson,(Neuromancer,Count Zero,Mona Lisa Overdrive)),Herbert:(Frank Herbert,(Destination Void,Jesus Incident,Lazurus Effect))",
+			"SciFi:((William Gibson,(Neuromancer,Count Zero,Mona Lisa Overdrive)),(Frank Herbert,(Destination Void,Jesus Incident,Lazurus Effect)))",
+			"Sci-Fi:(((William Gibson,(Neuromancer,Count Zero,Mona Lisa Overdrive)),(Frank Herbert,(Destination Void,Jesus Incident,Lazurus Effect))),((Douglas Adams,(Restaurant at the End of the Universe))))",
 		},
 	}
 
@@ -768,17 +768,16 @@ func TestPtrs(t *testing.T) {
 			"PBoolM", "PIntM", "PFloat64M", "PComplex128M", "PStringM",
 			"PKBoolM", "PKIntM", "PKFloat64M", "PKComplex128M", "PKStringM",
 		},
-		[]string{"false", "false, false", "",
-			"0", "0, 0", "",
-
-			"0", "0, 0", "",
-			"0+E00", "0+E00, 0+E00", "",
-			"(0+0i)", "(0+0i), (0+0i)", "",
-			"", ", ", "",
-			"", "", "", "", "",
-			"", "", "", "", "",
-			"", "", "", "", "",
-			"", "", "", "", "",
+		[]string{"false", "false,false", "",
+			"0", "0,0", "",
+			"0", "0,0", "",
+			"0+E00", "0+E00,0+E00", "",
+			"(0+0i)", "(0+0i),(0+0i)", "",
+			"", ",", "",
+			"", "","", "", "",
+			"", "","", "", "",
+			"", "","", "", "",
+			"", "","", "", "",
 		},
 	}
 	pbool(tst[0].Bool, true)
@@ -829,17 +828,17 @@ func TestPrivateMarshal(t *testing.T) {
 		{(8 + 5i), reflect.Complex128, reflect.Invalid, []string{"(8+5i)"}, false, ""},
 		{[]chan int{}, reflect.Chan, reflect.Invalid, []string{}, false, "struct2csv:marshalSlice: unsupported type: chan"},
 		{[]func(){}, reflect.Func, reflect.Invalid, []string{}, false, "struct2csv:marshalSlice: unsupported type: func"},
-		{[]string{"a", "b", "c"}, reflect.String, reflect.Invalid, []string{"(a, b, c)"}, false, ""},
+		{[]string{"a", "b", "c"}, reflect.String, reflect.Invalid, []string{"(a,b,c)"}, false, ""},
 		{[]*int{}, reflect.Int, reflect.Invalid, []string{"()"}, false, ""},
 		{new([]float32), reflect.Float32, reflect.Invalid, []string{"()"}, false, ""},
 		{new([]*float64), reflect.Float64, reflect.Invalid, []string{"()"}, false, ""},
 
 		{[]**int{}, reflect.Int, reflect.Invalid, []string{"(2)"}, false, ""},
 		{[][]string{[]string{"a", "b", "c"}, []string{"d", "e", "f"}},
-			reflect.String, reflect.Invalid, []string{"((a, b, c), (d, e, f))"}, false, ""},
-		{[][]*int{[]*int{}, []*int{}}, reflect.Int, reflect.Invalid, []string{"((2, 2), (2))"}, false, ""},
-		{map[string]int{"a": 1, "b": 2}, reflect.String, reflect.Int, []string{"a:1, b:2"}, true, ""},
-		{map[int]string{1: "a", 2: "b", 3: "c"}, reflect.Int, reflect.String, []string{"1:a, 2:b, 3:c"}, true, ""},
+			reflect.String, reflect.Invalid, []string{"((a,b,c),(d,e,f))"}, false, ""},
+		{[][]*int{[]*int{}, []*int{}}, reflect.Int, reflect.Invalid, []string{"((2,2),(2))"}, false, ""},
+		{map[string]int{"a": 1, "b": 2}, reflect.String, reflect.Int, []string{"a:1,b:2"}, true, ""},
+		{map[int]string{1: "a", 2: "b", 3: "c"}, reflect.Int, reflect.String, []string{"1:a,2:b,3:c"}, true, ""},
 		{new(map[int]bool), reflect.Int, reflect.Bool, []string{""}, true, ""},
 		{map[*func()]int{}, reflect.Func, reflect.Int, []string{}, true, "struct2csv:marshalMap: unsupported type: func"},
 		{map[int]func(){}, reflect.Int, reflect.Func, []string{}, true, "struct2csv:marshalMap: unsupported type: func"},
@@ -849,7 +848,7 @@ func TestPrivateMarshal(t *testing.T) {
 		{map[string]**int{}, reflect.String, reflect.Int, []string{"key:2"}, true, ""},
 		{map[string]map[int]string{}, reflect.String, reflect.Int, []string{""}, true, ""},
 		{map[int]map[int]string{1: map[int]string{11: "a"}, 2: map[int]string{21: "A", 22: "B"}},
-			reflect.Int, reflect.Map, []string{"1:(11:a), 2:(21:A, 22:B)"}, true, ""},
+			reflect.Int, reflect.Map, []string{"1:(11:a),2:(21:A,22:B)"}, true, ""},
 		{map[int]map[chan string]int{}, reflect.Int, reflect.Chan, []string{}, true, "struct2csv:marshalMap: unsupported type: chan"},
 		{map[int]map[string]chan int{}, reflect.Int, reflect.Chan, []string{}, true, "struct2csv:marshalMap: unsupported type: chan"},
 	}
@@ -976,11 +975,11 @@ func pfunc(p *func()) {
 }
 
 func splitCleanSort(s string) []string {
-	s = strings.Replace(s, "(", "", -1)
-	s = strings.Replace(s, ")", "", -1)
-	s = strings.Replace(s, ",", "", -1)
-	s = strings.Replace(s, ":", " ", -1)
-	parts := strings.Fields(s)
+	s = strings.Replace(s, "(", ":", -1)
+	s = strings.Replace(s, ")", ":", -1)
+	s = strings.Replace(s, ",", ":", -1)
+	s = strings.Replace(s, " ", ":", -1)
+	parts := strings.Split(s, ":")
 	sort.Strings(parts)
 	return parts
 }
