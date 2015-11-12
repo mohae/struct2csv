@@ -8,19 +8,7 @@ import (
 	"testing"
 )
 
-type Tst struct {
-	Int          int
-	Ints         []int
-	ints         []int
-	String       string
-	Strings      []string
-	StringString map[string]string
-	StringInt    map[string]int
-	IntInt       map[int]int
-	strings      []string
-}
-
-type TstTags struct {
+type Tags struct {
 	Int          int   `json:"number" csv:"Number"`
 	Ints         []int `json:"numbers" csv:"Numbers"`
 	ints         []int
@@ -32,7 +20,13 @@ type TstTags struct {
 	strings      []string
 }
 
-type TstEmbed struct {
+var (
+	expectedTagCols     = []string{"Int", "Ints", "String", "Strings", "StringString", "StringInt", "IntInt"}
+	expectedTagJSONCols = []string{"number", "numbers", "word", "words", "mapstringstring", "mapstringint", "mapintint"}
+	expectedTagCSVCols  = []string{"Number", "Numbers", "Word", "Words", "MapStringString", "MapStringInt", "MapIntInt"}
+)
+
+type Embedded struct {
 	Name string
 	Location
 	Notes
@@ -58,29 +52,60 @@ type Address struct {
 type Notes map[string]string
 type Stuff map[string]string
 
+var (
+	expectedEmbedCols = []string{"Name", "ID", "Addr1", "Addr2", "City", "State", "Zip", "Phone", "Lat", "Long", "Notes", "Stuff"}
+	EmbeddedTests     = []Embedded{
+		Embedded{
+			Name: "United Center",
+			Location: Location{
+				ID: 1,
+				Address: Address{
+					Addr1: "1901 W. Madison St.",
+					City:  "Chicago",
+					State: "IL",
+					Zip:   "60612",
+				},
+				Phone: "(312) 455-4500",
+				Lat:   "41.8806",
+				Long:  "-87.6742",
+			},
+			Notes: map[string]string{"NHL": "Blackhawks", "NBA": "Bulls"},
+		},
+		Embedded{
+			Name: "Wrigley Field",
+			Location: Location{
+				ID: 1906,
+				Address: Address{
+					Addr1: "1060 W. Addison St.",
+					Addr2: "Broadcast Booth",
+					City:  "Chicago",
+					State: "IL",
+					Zip:   "60613",
+				},
+				Phone: "(773) 404-2827",
+				Lat:   "41.9483",
+				Long:  "-87.6556",
+			},
+			Notes: map[string]string{"MLB": "Cubs"},
+			Stuff: map[string]string{"Jack Brickhouse": "Hey Hey", "Harry Caray": "Holy Cow"},
+		},
+	}
+)
+
+var expectedEmbedded = [][]string{
+	[]string{"Name", "ID", "Addr1", "Addr2", "City", "State", "Zip", "Phone", "Lat", "Long", "Notes", "Stuff"},
+	[]string{"United Center", "1", "1901 W. Madison St.", "", "Chicago", "IL", "60612",
+		"(312) 455-4500", "41.8806", "-87.6742", "NBA:Bulls, NHL:Blackhawks", ""},
+	[]string{"Wrigley Field", "1906", "1060 W. Addison St.", "Broadcast Booth", "Chicago", "IL", "60613",
+		"(773) 404-2827", "41.9483", "-87.6556", "MLB:Cubs", "Harry Caray:Holy Cow, Jack Brickhouse:Hey Hey"},
+}
+
 type Basic struct {
 	Name string
 	List []string
 }
 
-type StructPtr struct {
-	MapBasicP        map[string]*Basic
-	MapBasicSliceP   map[string]*[]Basic
-	MapPBasicSlice   map[string][]*Basic
-	PMapPBasicSlice  *map[string][]*Basic
-	PMapPPBasicSlice *map[string][]**Basic
-}
-
-type Structor struct {
-	MapMap          map[string]map[string]string
-	MapSlice        map[string][]string
-	Map2DSlice      map[string][][]string
-	MapBasic        map[string]Basic
-	MapBasicSlice   map[string][]Basic
-	MapBasic2DSlice map[string][][]Basic
-}
-
-type TTypes struct {
+type BaseSliceTypes struct {
 	Bool        bool
 	Bools       []bool
 	ABool       [2]bool
@@ -195,6 +220,23 @@ type PtrTypes struct {
 	PKStringM     *map[*string]string
 }
 
+type MapPtr struct {
+	MapBasicP        map[string]*Basic
+	MapBasicSliceP   map[string]*[]Basic
+	MapPBasicSlice   map[string][]*Basic
+	PMapPBasicSlice  *map[string][]*Basic
+	PMapPPBasicSlice *map[string][]**Basic
+}
+
+type ComplexMap struct {
+	MapMap          map[string]map[string]string
+	MapSlice        map[string][]string
+	Map2DSlice      map[string][][]string
+	MapBasic        map[string]Basic
+	MapBasicSlice   map[string][]Basic
+	MapBasic2DSlice map[string][][]Basic
+}
+
 func TestNew(t *testing.T) {
 	tc := New()
 	if tc.useTags != true {
@@ -231,104 +273,78 @@ func TestGetColNames(t *testing.T) {
 			t.Errorf("expected error to be \"struct2csv: a value of type struct is required: type was slice\", got %q", err)
 		}
 	}
-	tc.useTags = false
-	tst := Tst{}
-	expectedColNames := []string{"Int", "Ints", "String", "Strings", "StringString", "StringInt", "IntInt"}
-	hdr, err := tc.GetColNames(tst)
-	if err != nil {
-		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
-		goto IGNORETAG
-	}
-	if len(hdr) != len(expectedColNames) {
-		t.Errorf("Expected %d column ColNames, got %d", len(expectedColNames), len(hdr))
-		goto IGNORETAG
-	}
-	for i, v := range hdr {
-		if v != expectedColNames[i] {
-			t.Errorf("%d: expected %q got %q", i, expectedColNames[i], v)
-		}
-	}
 
-IGNORETAG:
 	tc.useTags = false
-	test := TstTags{}
-	expectedColNames = []string{"Int", "Ints", "String", "Strings", "StringString", "StringInt", "IntInt"}
-	hdr, err = tc.GetColNames(test)
+	hdr, err := tc.GetColNames(Tags{})
 	if err != nil {
 		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
 		goto CSVTAG
 	}
-	if len(hdr) != len(expectedColNames) {
-		t.Errorf("Expected %d column ColNames, got %d", len(expectedColNames), len(hdr))
+	if len(hdr) != len(expectedTagCols) {
+		t.Errorf("Expected %d column ColNames, got %d", len(expectedTagCols), len(hdr))
 		goto CSVTAG
 	}
 	for i, v := range hdr {
-		if v != expectedColNames[i] {
-			t.Errorf("%d: expected %q got %q", i, expectedColNames[i], v)
+		if v != expectedTagCols[i] {
+			t.Errorf("%d: expected %q got %q", i, expectedTagCols[i], v)
 		}
 	}
-
 CSVTAG:
 	// test using CSV tags
 	tc.useTags = true
-	expectedColNames = []string{"Number", "Numbers", "Word", "Words", "MapStringString", "MapStringInt", "MapIntInt"}
-	hdr, err = tc.GetColNames(TstTags{})
+	hdr, err = tc.GetColNames(Tags{})
 	if err != nil {
 		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
 		goto JSONTAG
 	}
-	if len(hdr) != len(expectedColNames) {
-		t.Errorf("Expected %d column ColNames, got %d", len(expectedColNames), len(hdr))
+	if len(hdr) != len(expectedTagCSVCols) {
+		t.Errorf("Expected %d column ColNames, got %d", len(expectedTagCSVCols), len(hdr))
 		goto JSONTAG
 	}
 	for i, v := range hdr {
-		if v != expectedColNames[i] {
-			t.Errorf("%d: expected %q got %q", i, expectedColNames[i], v)
+		if v != expectedTagCSVCols[i] {
+			t.Errorf("%d: expected %q got %q", i, expectedTagCSVCols[i], v)
 		}
 	}
-
 JSONTAG:
 	// test using CSV tags
-	expectedColNames = []string{"number", "numbers", "word", "words", "mapstringstring", "mapstringint", "mapintint"}
 	tc.useTags = true
 	tc.tag = "json"
-	hdr, err = tc.GetColNames(TstTags{})
+	hdr, err = tc.GetColNames(Tags{})
 	if err != nil {
 		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
 		goto EMBED
 	}
-	if len(hdr) != len(expectedColNames) {
-		t.Errorf("Expected %d column ColNames, got %d", len(expectedColNames), len(hdr))
+	if len(hdr) != len(expectedTagJSONCols) {
+		t.Errorf("Expected %d column ColNames, got %d", len(expectedTagJSONCols), len(hdr))
 		goto EMBED
 	}
 	for i, v := range hdr {
-		if v != expectedColNames[i] {
-			t.Errorf("%d: expected %q got %q", i, expectedColNames[i], v)
+		if v != expectedTagJSONCols[i] {
+			t.Errorf("%d: expected %q got %q", i, expectedTagJSONCols[i], v)
 		}
 	}
-
 EMBED:
-	expectedColNames = []string{"Name", "ID", "Addr1", "Addr2", "City", "State", "Zip", "Phone", "Lat", "Long", "Notes", "Stuff"}
-	hdr, err = tc.GetColNames(TstEmbed{})
+	hdr, err = tc.GetColNames(Embedded{})
 	if err != nil {
 		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
 		return
 	}
-	if len(hdr) != len(expectedColNames) {
-		t.Errorf("Expected %d column ColNames, got %d", len(expectedColNames), len(hdr))
+	if len(hdr) != len(expectedEmbedCols) {
+		t.Errorf("Expected %d column ColNames, got %d", len(expectedEmbedCols), len(hdr))
 		t.Errorf("%#v\n", hdr)
 		return
 	}
 	for i, v := range hdr {
-		if v != expectedColNames[i] {
-			t.Errorf("%d: expected %q got %q", i, expectedColNames[i], v)
+		if v != expectedEmbedCols[i] {
+			t.Errorf("%d: expected %q got %q", i, expectedEmbedCols[i], v)
 		}
 	}
 }
 
 func TestMarshal(t *testing.T) {
-	tsts := []TTypes{
-		TTypes{
+	tsts := []BaseSliceTypes{
+		BaseSliceTypes{
 			Bool:        true,
 			Bools:       []bool{true, false, true},
 			ABool:       [2]bool{true, false},
@@ -386,7 +402,7 @@ func TestMarshal(t *testing.T) {
 			AString:     [2]string{"pangalactic", "gargleblaster"},
 			strings:     []string{"hello"},
 		},
-		TTypes{
+		BaseSliceTypes{
 			Bool:        true,
 			Bools:       []bool{true, true, false},
 			ABool:       [2]bool{true, false},
@@ -496,7 +512,7 @@ func TestMarshal(t *testing.T) {
 			"Towel", "()", "(Zaphod, Beeblebrox)"},
 	}
 	tc := New()
-	data, err := tc.Marshal(Tst{})
+	data, err := tc.Marshal(Tags{})
 	if err != nil {
 		if err.Error() != "struct2csv: a type of slice is required: type was struct" {
 			t.Errorf("Expected \"struct2csv: a type of slice is required: type was struct\", got %q", err)
@@ -543,7 +559,6 @@ NONSTRUCT:
 		t.Error("Expected an error, got none")
 	}
 BASIC:
-
 	data, err = tc.Marshal(tsts)
 	if err != nil {
 		t.Errorf("expected no error, got %q", err)
@@ -555,7 +570,6 @@ BASIC:
 	}
 	for i, row := range data {
 		for j, col := range row {
-			//t.Errorf("%d:%d\n\t%s\n\t%s\n", i, j, expected[i][j], col)
 			if col != expected[i][j] {
 				t.Errorf("%d:%d: expected %q, got %q", i, j, expected[i][j], col)
 			}
@@ -565,96 +579,51 @@ EMBED:
 }
 
 func TestMarshalStructs(t *testing.T) {
-	Tsts := []TstEmbed{
-		TstEmbed{
-			Name: "United Center",
-			Location: Location{
-				ID: 1,
-				Address: Address{
-					Addr1: "1901 W. Madison St.",
-					City:  "Chicago",
-					State: "IL",
-					Zip:   "60612",
-				},
-				Phone: "(312) 455-4500",
-				Lat:   "41.8806",
-				Long:  "-87.6742",
-			},
-			Notes: map[string]string{"NHL": "Blackhawks", "NBA": "Bulls"},
-		},
-		TstEmbed{
-			Name: "Wrigley Field",
-			Location: Location{
-				ID: 1906,
-				Address: Address{
-					Addr1: "1060 W. Addison St.",
-					Addr2: "Broadcast Booth",
-					City:  "Chicago",
-					State: "IL",
-					Zip:   "60613",
-				},
-				Phone: "(773) 404-2827",
-				Lat:   "41.9483",
-				Long:  "-87.6556",
-			},
-			Notes: map[string]string{"MLB": "Cubs"},
-			Stuff: map[string]string{"Jack Brickhouse": "Hey Hey", "Harry Caray": "Holy Cow"},
-		},
-	}
-
-	expected := [][]string{
-		[]string{"Name", "ID", "Addr1", "Addr2", "City", "State", "Zip", "Phone", "Lat", "Long", "Notes", "Stuff"},
-		[]string{"United Center", "1", "1901 W. Madison St.", "", "Chicago", "IL", "60612",
-			"(312) 455-4500", "41.8806", "-87.6742", "NBA:Bulls, NHL:Blackhawks", ""},
-		[]string{"Wrigley Field", "1906", "1060 W. Addison St.", "Broadcast Booth", "Chicago", "IL", "60613",
-			"(773) 404-2827", "41.9483", "-87.6556", "MLB:Cubs", "Harry Caray:Holy Cow, Jack Brickhouse:Hey Hey"},
-	}
-
 	tc := New()
-	rows, err := tc.Marshal(Tsts)
+	rows, err := tc.Marshal(EmbeddedTests)
 	if err != nil {
 		t.Errorf("did not expect an error: got %q", err)
 		return
 	}
-	if len(rows) != len(expected) {
-		t.Errorf("Expected %d rows of data, got %d", len(expected), len(rows))
+	if len(rows) != len(expectedEmbedded) {
+		t.Errorf("Expected %d rows of data, got %d", len(expectedEmbedded), len(rows))
 		return
 	}
 	for i, row := range rows {
-		if len(row) != len(expected[i]) {
-			t.Errorf("%d: expected row to have %d columns, got %d", i, len(expected[i]), len(row))
+		if len(row) != len(expectedEmbedded[i]) {
+			t.Errorf("%d: expected row to have %d columns, got %d", i, len(expectedEmbedded[i]), len(row))
 			continue
 		}
 		for j, col := range row {
-			if col != expected[i][j] {
-				t.Errorf("%d:%d: expected %v got %v", i, j, expected[i][j], col)
+			if col != expectedEmbedded[i][j] {
+				t.Errorf("%d:%d: expected %v got %v", i, j, expectedEmbedded[i][j], col)
 			}
 		}
 	}
 	// test GetRow
-	for i, tst := range Tsts {
+	for i, tst := range EmbeddedTests {
 		row, err := tc.GetRow(tst)
 		if err != nil {
 			t.Errorf("Unexpected error")
 		}
 		for j, col := range row {
-			if col != expected[i+1][j] {
-				t.Errorf("%d:%d: expected %v, got %v", i, j, expected[i+1][j], col)
+			if col != expectedEmbedded[i+1][j] {
+				t.Errorf("%d:%d: expected %v, got %v", i, j, expectedEmbedded[i+1][j], col)
 			}
 		}
 	}
 }
 
 func TestPtrStructs(t *testing.T) {
-	tsts := []StructPtr{
-		StructPtr{
+	tsts := []MapPtr{
+		MapPtr{
 			MapBasicP:        map[string]*Basic{"MapBasicP": &Basic{Name: "Jason Bourne", List: []string{"keystone"}}},
 			MapBasicSliceP:   map[string]*[]Basic{"MapBasicSliceP": new([]Basic)},
 			MapPBasicSlice:   map[string][]*Basic{"MapPBasicSlice": []*Basic{&Basic{Name: "Foo", List: []string{"bar", "baz"}}}},
 			PMapPBasicSlice:  new(map[string][]*Basic),
 			PMapPPBasicSlice: new(map[string][]**Basic),
 		},
-		StructPtr{},
+		MapPtr{},
 	}
 	expected := [][]string{
 		[]string{"MapBasicP", "MapBasicSliceP", "MapPBasicSlice", "PMapPBasicSlice", "PMapPPBasicSlice"},
@@ -688,8 +657,8 @@ func TestPtrStructs(t *testing.T) {
 }
 
 func TestComplicated(t *testing.T) {
-	tsts := []Structor{
-		Structor{
+	tsts := []ComplexMap{
+		ComplexMap{
 			MapMap: map[string]map[string]string{
 				"Region 1": map[string]string{
 					"colo1": "rack1",
