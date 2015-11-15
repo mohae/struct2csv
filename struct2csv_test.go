@@ -545,12 +545,11 @@ BASIC:
 	data, err = tc.Marshal(tsts)
 	if err != nil {
 		t.Errorf("expected no error, got %q", err)
-		goto EMBED
+		return
 	}
-	return
 	if len(data) != len(expected) {
 		t.Errorf("Expected %d rows, got %d", len(expected), len(data))
-		goto EMBED
+		return
 	}
 	for i, row := range data {
 		for j, col := range row {
@@ -559,7 +558,6 @@ BASIC:
 			}
 		}
 	}
-EMBED:
 }
 
 func TestMarshalStructs(t *testing.T) {

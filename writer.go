@@ -54,7 +54,7 @@ func (w *Writer) WriteStruct(st interface{}) error {
 	return w.w.Write(row)
 }
 
-// WriteStruct takes a slice of structs and writes them as CSV records.  This
+// WriteStructs takes a slice of structs and writes them as CSV records.  This
 // includes writing out the column names as the first row.  When done, Flush
 // is called.
 func (w *Writer) WriteStructs(st interface{}) error {
@@ -105,6 +105,7 @@ func (w *Writer) Rows() int {
 }
 
 // Expose public CSV fields
+
 // Comma is the field delimiter, set to '.'
 func (w *Writer) Comma() rune {
 	return w.w.Comma

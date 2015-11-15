@@ -53,7 +53,7 @@ func TestRows(t *testing.T) {
 		w.Flush()
 		out := buff.String()
 		if out != test.Output {
-			t.Errorf("%d: out=%q want $q", i, out, test.Output)
+			t.Errorf("%d: out=%q want %q", i, out, test.Output)
 		}
 
 	}
