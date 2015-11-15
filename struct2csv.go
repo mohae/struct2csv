@@ -10,21 +10,6 @@ import (
 	"strings"
 )
 
-// An UnsupportedTypeError is returned when attempting to encode an
-// an unsupported value type.
-type UnsupportedTypeError struct {
-	kind    reflect.Kind
-	method  string
-	message string
-}
-
-func (e UnsupportedTypeError) Error() string {
-	if e.message == "" {
-		return fmt.Sprintf("struct2csv:%s: unsupported type: %s", e.method, e.kind)
-	}
-	return fmt.Sprintf("struct2csv:%s: %s %s", e.method, e.message, e.kind)
-}
-
 // A StructRequiredError is returned when a non-struct type is received.
 type StructRequiredError struct {
 	Kind reflect.Kind
@@ -145,12 +130,15 @@ func (e *Encoder) GetColNames(v interface{}) ([]string, error) {
 	if reflect.TypeOf(v).Kind() != reflect.Struct {
 		return nil, StructRequiredError{reflect.TypeOf(v).Kind()}
 	}
-	return e.getColNames(v)
+	// the returned bool is ignored because it's only used for recursive
+	// calls.
+	names, _ := e.getColNames(v)
+	return names, nil
 }
 
 // The private func where the work is done.  This also copies the headers
-// to the Encoder.colNames field.  This is a copy of the slice contents.
-func (e *Encoder) getColNames(v interface{}) ([]string, error) {
+// to the Encoder.colNames field.
+func (e *Encoder) getColNames(v interface{}) ([]string, bool) {
 	typ := reflect.TypeOf(v)
 	val := reflect.ValueOf(v)
 	var cols []string
@@ -163,14 +151,14 @@ func (e *Encoder) getColNames(v interface{}) ([]string, error) {
 		vF := val.Field(i)
 		switch vF.Kind() {
 		case reflect.Struct:
-			tmp, err := e.getColNames(vF.Interface())
-			if err != nil {
-				return nil, err
+			tmp, ok := e.getColNames(vF.Interface())
+			if !ok {
+				return nil, false
 			}
 			cols = append(cols, tmp...)
 			continue
 		default:
-			_, _, ok := supportedBaseKind(vF)
+			ok := supportedBaseKind(vF)
 			if !ok {
 				continue
 			}
@@ -187,14 +175,16 @@ func (e *Encoder) getColNames(v interface{}) ([]string, error) {
 	}
 	e.colNames = make([]string, len(cols))
 	_ = copy(e.colNames, cols)
-	return cols, nil
+	return cols, true
 }
 
 // GetRow get's the data from the passed struct. This only operates on
 // single structs.  If you wish to transmogrify everything at once, use
 // Encoder.Marshal([]T).
 func (e *Encoder) GetRow(v interface{}) ([]string, error) {
-	return e.marshalStruct(v, false)
+	// 2nd parm is only used for recursive calls.
+	cols, _ := e.marshalStruct(v, false)
+	return cols, nil
 }
 
 // Marshal takes a slice of structs and returns a [][]byte representing CSV
@@ -222,19 +212,16 @@ func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 	s := val.Index(0)
 	switch s.Kind() {
 	case reflect.Struct:
-		cols, err := e.getColNames(s.Interface())
-		if err != nil {
-			return nil, err
-		}
+		cols, _ := e.getColNames(s.Interface())
 		rows = append(rows, cols)
 	default:
 		return nil, StructSliceError{Kind: reflect.Slice, SliceKind: s.Kind()}
 	}
 	for i := 0; i < val.Len(); i++ {
 		s := val.Index(i)
-		row, err := e.marshalStruct(s.Interface(), false)
-		if err != nil {
-			return nil, err
+		row, ok := e.marshalStruct(s.Interface(), false)
+		if !ok {
+			continue
 		}
 		rows = append(rows, row)
 
@@ -244,15 +231,17 @@ func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 
 
 // marshal returns the marshaled struct as a slice of column values, as
-// strings. Any error results a nil slice.
-func (e *Encoder) marshal(val reflect.Value, child bool) (cols []string, err error) {
+// sa slice of strings.  Values of unsupported Kinds return nil
+func (e *Encoder) marshal(val reflect.Value, child bool) ([]string, bool) {
+	var cols []string
 	var s string
+	var ok bool
 	switch val.Kind() {
 	case reflect.Ptr:
 		// for maps and slices, check that they are of supported types
-		_, _, ok := supportedBaseKind(val)
+		ok = supportedBaseKind(val)
 		if !ok {
-			return nil, UnsupportedTypeError{kind: val.Kind(), method: "marshal"}
+			return nil, false
 		}
 		vv := reflect.Indirect(val)
 		switch vv.Kind() {
@@ -264,27 +253,27 @@ func (e *Encoder) marshal(val reflect.Value, child bool) (cols []string, err err
 	case reflect.Struct:
 		return e.marshalStruct(val.Interface(), true)
 	case reflect.Map:
-		s, err = e.marshalMap(val, child)
-		if err != nil {
-			return nil, err
+		s, ok = e.marshalMap(val, child)
+		if !ok {
+			return nil, false
 		}
 	case reflect.Array, reflect.Slice:
-		s, err = e.marshalSlice(val, child)
-		if err != nil {
-			return nil, err
+		s, ok = e.marshalSlice(val, child)
+		if !ok {
+			return nil, false
 		}
 	default:
 		var ok bool
 		s, ok = e.stringify(val, child)
 		if !ok {
-			return nil, UnsupportedTypeError{kind: val.Kind(), method: "marshal"}
+			return nil, false
 		}
 	}
-	return append(cols, s), nil
+	return append(cols, s), true
 }
 
 
-func (e *Encoder) marshalStruct(str interface{}, child bool) ([]string, error) {
+func (e *Encoder) marshalStruct(str interface{}, child bool) ([]string, bool) {
 	var cols []string
 	val := reflect.ValueOf(str)
 	typ := reflect.TypeOf(str)
@@ -292,31 +281,23 @@ func (e *Encoder) marshalStruct(str interface{}, child bool) ([]string, error) {
 		if typ.Field(i).PkgPath != "" {
 			continue
 		}
-		// TODO is embedded detection necessary?
-		var tmp []string
-		var err error
 		vF := val.Field(i)
-		// check if ptr is nil
-		tmp, err = e.marshal(vF, child)
-		if err != nil {
-			if _, ok := err.(UnsupportedTypeError); ok {
-				continue
-			}
-			return nil, err
+		tmp, ok := e.marshal(vF, child)
+		if !ok {
+			// wasn't a supported kind, skip
+			continue
 		}
 		cols = append(cols, tmp...)
 	}
-	return cols, nil
+	return cols, true
 }
 
 // marshal map handles marshalling of maps.  If the map's key type is
 // supported is determined by the caller.
-func (e *Encoder) marshalMap(m reflect.Value, child bool) (string, error) {
-	if k, v, ok := supportedBaseKind(m); !ok {
-		if isSupportedKind(k) {
-			return "", UnsupportedTypeError{kind: v, method: "marshalMap"}
-		}
-		return "", UnsupportedTypeError{kind: k, method: "marshalMap"}
+func (e *Encoder) marshalMap(m reflect.Value, child bool) (string, bool) {
+	var ok bool
+	if ok = supportedBaseKind(m); !ok {
+		return "", false
 	}
 	// get the kind of the map value
 	var row string
@@ -325,9 +306,9 @@ func (e *Encoder) marshalMap(m reflect.Value, child bool) (string, error) {
 	sort.Sort(sv)
 	for i, key := range sv {
 		val := m.MapIndex(key)
-		kk, err := e.marshal(key, true)
-		if err != nil {
-			return "", UnsupportedTypeError{kind: key.Kind(), method: "marshalMap"}
+		kk, ok := e.marshal(key, true)
+		if !ok {
+			return "", false
 		}
 		var kval, vval string
 		for j, tmp := range kk {
@@ -339,10 +320,10 @@ func (e *Encoder) marshalMap(m reflect.Value, child bool) (string, error) {
 		if len(kk) > 1 {
 			kval = fmt.Sprintf("%s%s%s", e.sepBeg, kval, e.sepEnd)
 		}
-		if err != nil {
-			return "", UnsupportedTypeError{kind: key.Kind(), method: "marshalMap"}
+		vv, ok := e.marshal(val, true)
+		if !ok {
+			return "", false
 		}
-		vv, err := e.marshal(val, true)
 		for j, tmp := range vv {
 			if j > 0 && j < len(vv) {
 				vval += ","
@@ -362,24 +343,24 @@ func (e *Encoder) marshalMap(m reflect.Value, child bool) (string, error) {
 	if child {
 		row = fmt.Sprintf("%s%s%s", e.sepBeg, row, e.sepEnd)
 	}
-	return row, nil
+	return row, true
 }
 
 // marshalSlice handles marshaling of slices. This should not receive a
 // pointer. Is is assumed that any pointers to the slice have already been
 // dereferenced.
-func (e *Encoder) marshalSlice(val reflect.Value, child bool) (string, error) {
-	if k, _, ok := supportedBaseKind(val); !ok {
-		return "", UnsupportedTypeError{kind: k, method: "marshalSlice"}
+func (e *Encoder) marshalSlice(val reflect.Value, child bool) (string, bool) {
+	var ok bool
+	if ok = supportedBaseKind(val); !ok {
+		return "", false
 	}
 	var sl, str string
-	var ok bool
 	// check the type of slice and handle
 	for j := 0; j < val.Len(); j++ {
 		str = ""
 		str, ok = e.stringify(val.Index(j), child)
 		if !ok {
-			return "", UnsupportedTypeError{kind: val.Index(j).Kind(), method: "marshalSlice"}
+			return "", false
 		}
 		if j == 0 {
 			sl = str
@@ -390,7 +371,7 @@ func (e *Encoder) marshalSlice(val reflect.Value, child bool) (string, error) {
 	if child {
 		sl = fmt.Sprintf("%s%s%s", e.sepBeg, sl, e.sepEnd)
 	}
-	return sl, nil
+	return sl, true
 }
 
 
@@ -419,8 +400,8 @@ func (e *Encoder) stringify(v reflect.Value, child bool) (string, bool) {
 	case reflect.Ptr:
 		return e.stringify(v.Elem(), child)
 	default:
-		cols, err := e.marshal(v, true)
-		if err != nil {
+		cols, ok := e.marshal(v, true)
+		if !ok {
 			return "", false
 		}
 		r := cols[0]
@@ -465,17 +446,19 @@ func baseKind(typ reflect.Type) (k, v reflect.Kind) {
 	return typ.Kind(), v
 }
 
-func supportedBaseKind(val reflect.Value) (k, v reflect.Kind, ok bool) {
-	k, v = baseKind(val.Type())
+func supportedBaseKind(val reflect.Value) bool {
+	k, v := baseKind(val.Type())
 	if !isSupportedKind(k) {
-		return k, v, false
+		return false
 	}
+	// v is only used for maps; when the baseKind is a map, its value
+	// will be something other than reflect.Invalid
 	if v != reflect.Invalid {
 		if !isSupportedKind(v) {
-			return k, v, false
+			return false
 		}
 	}
-	return k, v, true
+	return true
 }
 
 // sliceKind returns the Kind of the slice; e.g.
