@@ -229,7 +229,6 @@ func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 	return rows, nil
 }
 
-
 // marshal returns the marshaled struct as a slice of column values, as
 // sa slice of strings.  Values of unsupported Kinds return nil
 func (e *Encoder) marshal(val reflect.Value, child bool) ([]string, bool) {
@@ -271,7 +270,6 @@ func (e *Encoder) marshal(val reflect.Value, child bool) ([]string, bool) {
 	}
 	return append(cols, s), true
 }
-
 
 func (e *Encoder) marshalStruct(str interface{}, child bool) ([]string, bool) {
 	var cols []string
@@ -374,7 +372,6 @@ func (e *Encoder) marshalSlice(val reflect.Value, child bool) (string, bool) {
 	return sl, true
 }
 
-
 // stringify takes a interface and returns the value it contains as a string.
 // This is not ment for composite types.  If the type is not supported, an
 // error will be returned.
@@ -464,7 +461,7 @@ func supportedBaseKind(val reflect.Value) bool {
 // sliceKind returns the Kind of the slice; e.g.
 // reflect.Slice will be returned for [][]*int.
 func sliceKind(val reflect.Value) reflect.Kind {
-	switch val.Type().Elem().Kind(){
+	switch val.Type().Elem().Kind() {
 	case reflect.Ptr:
 		return ptrKind(val.Type().Elem())
 	}
@@ -536,7 +533,6 @@ func isSupportedKind(k reflect.Kind) bool {
 	}
 	return true
 }
-
 
 // see's if what's being pointed returns a zero value;
 func isZero(val reflect.Value) bool {

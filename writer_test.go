@@ -163,7 +163,7 @@ func TestWriteStructsComplex(t *testing.T) {
 	w := NewWriter(buff)
 	err := w.WriteStructs(complexTests)
 	if err != nil {
-		t.Errorf("unexpected error: %s",  err)
+		t.Errorf("unexpected error: %s", err)
 		return
 	}
 	s := buff.String()

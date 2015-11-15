@@ -220,7 +220,6 @@ type PtrTypes struct {
 	PKStringM     *map[*string]string
 }
 
-
 func TestNew(t *testing.T) {
 	tc := New()
 	if tc.useTags != true {
@@ -600,20 +599,20 @@ func TestMarshalStructs(t *testing.T) {
 }
 
 type MapPtr struct {
-	MapBasicP        map[string]*Basic
-	MapBasicSliceP   map[string]*[]Basic
-	MapPBasicSlice   map[string][]*Basic
-	PMapPBasicSlice  *map[string][]*Basic
+	MapBasicP       map[string]*Basic
+	MapBasicSliceP  map[string]*[]Basic
+	MapPBasicSlice  map[string][]*Basic
+	PMapPBasicSlice *map[string][]*Basic
 }
 
 func TestPtrStructs(t *testing.T) {
 	tsts := []MapPtr{
 		MapPtr{},
 		MapPtr{
-			MapBasicP:        map[string]*Basic{"MapBasicP": &Basic{Name: "Jason Bourne", List: []string{"keystone"}}},
-			MapBasicSliceP:   map[string]*[]Basic{"MapBasicSliceP": new([]Basic)},
-			MapPBasicSlice:   map[string][]*Basic{"MapPBasicSlice": []*Basic{&Basic{Name: "Foo", List: []string{"bar", "baz"}}}},
-			PMapPBasicSlice:  new(map[string][]*Basic),
+			MapBasicP:       map[string]*Basic{"MapBasicP": &Basic{Name: "Jason Bourne", List: []string{"keystone"}}},
+			MapBasicSliceP:  map[string]*[]Basic{"MapBasicSliceP": new([]Basic)},
+			MapPBasicSlice:  map[string][]*Basic{"MapPBasicSlice": []*Basic{&Basic{Name: "Foo", List: []string{"bar", "baz"}}}},
+			PMapPBasicSlice: new(map[string][]*Basic),
 		},
 	}
 	expected := [][]string{
@@ -643,7 +642,6 @@ func TestPtrStructs(t *testing.T) {
 		}
 	}
 }
-
 
 type ComplexMap struct {
 	MapMap          map[string]map[string]string
