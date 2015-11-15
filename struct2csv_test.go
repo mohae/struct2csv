@@ -220,80 +220,7 @@ type PtrTypes struct {
 	PKStringM     *map[*string]string
 }
 
-type MapPtr struct {
-	MapBasicP        map[string]*Basic
-	MapBasicSliceP   map[string]*[]Basic
-	MapPBasicSlice   map[string][]*Basic
-	PMapPBasicSlice  *map[string][]*Basic
-	PMapPPBasicSlice *map[string][]**Basic
-}
-
-type ComplexMap struct {
-	MapMap          map[string]map[string]string
-	MapSlice        map[string][]string
-	Map2DSlice      map[string][][]string
-	MapBasic        map[string]Basic
-	MapBasicSlice   map[string][]Basic
-	MapBasic2DSlice map[string][][]Basic
-}
-
-var complexTests = []ComplexMap{
-	ComplexMap{
-		MapMap: map[string]map[string]string{
-			"Region 1": map[string]string{
-				"colo1": "rack1",
-				"colo2": "rack2",
-			},
-			"Region 2": map[string]string{
-				"colo11": "rack11",
-				"colo12": "rack12",
-			},
-		},
-		MapSlice: map[string][]string{
-			"Canada": []string{"Alberta", "British Columbia", "Quebec"},
-			"USA":    []string{"California", "Florida", "New York"},
-		},
-		Map2DSlice: map[string][][]string{},
-		MapBasic: map[string]Basic{
-			"Gibson":  Basic{Name: "William Gibson", List: []string{"Neuromancer", "Count Zero", "Mona Lisa Overdrive"}},
-			"Herbert": Basic{Name: "Frank Herbert", List: []string{"Destination Void", "Jesus Incident", "Lazurus Effect"}},
-		},
-		MapBasicSlice: map[string][]Basic{
-			"SciFi": []Basic{
-				Basic{Name: "William Gibson", List: []string{"Neuromancer", "Count Zero", "Mona Lisa Overdrive"}},
-				Basic{Name: "Frank Herbert", List: []string{"Destination Void", "Jesus Incident", "Lazurus Effect"}},
-			},
-		},
-		MapBasic2DSlice: map[string][][]Basic{
-			"Sci-Fi": [][]Basic{
-				[]Basic{
-					Basic{Name: "William Gibson", List: []string{"Neuromancer", "Count Zero", "Mona Lisa Overdrive"}},
-					Basic{Name: "Frank Herbert", List: []string{"Destination Void", "Jesus Incident", "Lazurus Effect"}},
-				},
-				[]Basic{
-					Basic{Name: "Douglas Adams", List: []string{"Restaurant at the End of the Universe"}},
-				},
-			},
-		},
-	},
-}
-
-var complexExpected = [][]string{
-	[]string{"MapMap", "MapSlice", "Map2DSlice", "MapBasic", "MapBasicSlice", "MapBasic2DSlice"},
-	[]string{"Region 1:(colo1:rack1,colo2:rack2),Region 2:(colo11:rack11,colo12:rack12)",
-		"Canada:Alberta,British Columbia,Quebec,USA:California,Florida,New York",
-		"Canada:Calgary,Edmonton,FortMcMurray,Winnipeg,USA:San Diego,Los Angeles",
-		"Gibson:(William Gibson,Neuromancer,Count Zero,Mona Lisa Overdrive),Herbert:(Frank Herbert,Destination Void,Jesus Incident,Lazurus Effect)",
-		"SciFi:(William Gibson,Neuromancer,Count Zero,Mona Lisa Overdrive),(Frank Herbert,Destination Void,Jesus Incident,Lazurus Effect)",
-		"Sci-Fi:(William Gibson,Neuromancer,Count Zero,Mona Lisa Overdrive),(Frank Herbert,Destination Void,Jesus Incident,Lazurus Effect),(Douglas Adams,Restaurant at the End of the Universe)",
-	},
-}
-
-func init() {
-	complexTests[0].Map2DSlice["Canada"] = [][]string{[]string{"Calgary", "Edmonton", "FortMcMurray"}, []string{"Winnipeg"}}
-	complexTests[0].Map2DSlice["USA"] = [][]string{[]string{"San Diego", "Los Angeles"}}
-
-}
+/*
 func TestNew(t *testing.T) {
 	tc := New()
 	if tc.useTags != true {
@@ -621,6 +548,7 @@ BASIC:
 		t.Errorf("expected no error, got %q", err)
 		goto EMBED
 	}
+	return
 	if len(data) != len(expected) {
 		t.Errorf("Expected %d rows, got %d", len(expected), len(data))
 		goto EMBED
@@ -670,34 +598,37 @@ func TestMarshalStructs(t *testing.T) {
 		}
 	}
 }
+*/
+type MapPtr struct {
+	MapBasicP        map[string]*Basic
+	MapBasicSliceP   map[string]*[]Basic
+	MapPBasicSlice   map[string][]*Basic
+	PMapPBasicSlice  *map[string][]*Basic
+}
 
 func TestPtrStructs(t *testing.T) {
 	tsts := []MapPtr{
+		MapPtr{},
 		MapPtr{
 			MapBasicP:        map[string]*Basic{"MapBasicP": &Basic{Name: "Jason Bourne", List: []string{"keystone"}}},
 			MapBasicSliceP:   map[string]*[]Basic{"MapBasicSliceP": new([]Basic)},
 			MapPBasicSlice:   map[string][]*Basic{"MapPBasicSlice": []*Basic{&Basic{Name: "Foo", List: []string{"bar", "baz"}}}},
 			PMapPBasicSlice:  new(map[string][]*Basic),
-			PMapPPBasicSlice: new(map[string][]**Basic),
 		},
-		MapPtr{},
 	}
 	expected := [][]string{
-		[]string{"MapBasicP", "MapBasicSliceP", "MapPBasicSlice", "PMapPBasicSlice", "PMapPPBasicSlice"},
-		[]string{
-			"MapBasicP:(Jason Bourne,keystone)",
-			"MapBasicSliceP:",
-			"MapPBasicSlice:(Foo,bar,baz)",
-			"parks:(Wyoming,Yellowstone,Grand Tetons)",
-			"parks:(Wyoming,Yellowstone,Grand Tetons)",
-		},
+		[]string{"MapBasicP", "MapBasicSliceP", "MapPBasicSlice", "PMapPBasicSlice"},
 		[]string{"", "", "", "", ""},
+		[]string{
+			"MapBasicP:(Jason Bourne,(keystone))",
+			"MapBasicSliceP:()",
+			"MapPBasicSlice:((Foo,(bar,baz)))",
+			"parks:((Wyoming,(Yellowstone,Grand Tetons)))",
+		},
 	}
 	bsc := &Basic{Name: "Wyoming", List: []string{"Yellowstone", "Grand Tetons"}}
 	m1 := map[string][]*Basic{"parks": []*Basic{bsc}}
-	m2 := map[string][]**Basic{"parks": []**Basic{&bsc}}
-	tsts[0].PMapPBasicSlice = &m1
-	tsts[0].PMapPPBasicSlice = &m2
+	tsts[1].PMapPBasicSlice = &m1
 	enc := New()
 	rows, err := enc.Marshal(tsts)
 	if err != nil {
@@ -713,7 +644,72 @@ func TestPtrStructs(t *testing.T) {
 	}
 }
 
+
+type ComplexMap struct {
+	MapMap          map[string]map[string]string
+	MapSlice        map[string][]string
+	Map2DSlice      map[string][][]string
+	MapBasic        map[string]Basic
+	MapBasicSlice   map[string][]Basic
+	MapBasic2DSlice map[string][][]Basic
+}
+
+var complexTests = []ComplexMap{
+	ComplexMap{
+		MapMap: map[string]map[string]string{
+			"Region 1": map[string]string{
+				"colo1": "rack1",
+				"colo2": "rack2",
+			},
+			"Region 2": map[string]string{
+				"colo11": "rack11",
+				"colo12": "rack12",
+			},
+		},
+		MapSlice: map[string][]string{
+			"Canada": []string{"Alberta", "British Columbia", "Quebec"},
+			"USA":    []string{"California", "Florida", "New York"},
+		},
+		Map2DSlice: map[string][][]string{},
+		MapBasic: map[string]Basic{
+			"Gibson":  Basic{Name: "William Gibson", List: []string{"Neuromancer", "Count Zero", "Mona Lisa Overdrive"}},
+			"Herbert": Basic{Name: "Frank Herbert", List: []string{"Destination Void", "Jesus Incident", "Lazurus Effect"}},
+		},
+		MapBasicSlice: map[string][]Basic{
+			"SciFi": []Basic{
+				Basic{Name: "William Gibson", List: []string{"Neuromancer", "Count Zero", "Mona Lisa Overdrive"}},
+				Basic{Name: "Frank Herbert", List: []string{"Destination Void", "Jesus Incident", "Lazurus Effect"}},
+			},
+		},
+		MapBasic2DSlice: map[string][][]Basic{
+			"Sci-Fi": [][]Basic{
+				[]Basic{
+					Basic{Name: "William Gibson", List: []string{"Neuromancer", "Count Zero", "Mona Lisa Overdrive"}},
+					Basic{Name: "Frank Herbert", List: []string{"Destination Void", "Jesus Incident", "Lazurus Effect"}},
+				},
+				[]Basic{
+					Basic{Name: "Douglas Adams", List: []string{"Restaurant at the End of the Universe"}},
+				},
+			},
+		},
+	},
+}
+
+var complexExpected = [][]string{
+	[]string{"MapMap", "MapSlice", "Map2DSlice", "MapBasic", "MapBasicSlice", "MapBasic2DSlice"},
+	[]string{
+		"Region 1:(colo1:rack1,colo2:rack2),Region 2:(colo11:rack11,colo12:rack12)",
+		"Canada:(Alberta,British Columbia,Quebec),USA:(California,Florida,New York)",
+		"Canada:((Calgary,Edmonton,Fort McMurray),(Winnipeg)),USA:((San Diego,Los Angeles))",
+		"Gibson:(William Gibson,(Neuromancer,Count Zero,Mona Lisa Overdrive)),Herbert:(Frank Herbert,(Destination Void,Jesus Incident,Lazurus Effect))",
+		"SciFi:((William Gibson,(Neuromancer,Count Zero,Mona Lisa Overdrive)),(Frank Herbert,(Destination Void,Jesus Incident,Lazurus Effect)))",
+		"Sci-Fi:(((William Gibson,(Neuromancer,Count Zero,Mona Lisa Overdrive)),(Frank Herbert,(Destination Void,Jesus Incident,Lazurus Effect))),((Douglas Adams,(Restaurant at the End of the Universe))))",
+	},
+}
+
 func TestComplicated(t *testing.T) {
+	complexTests[0].Map2DSlice["Canada"] = [][]string{[]string{"Calgary", "Edmonton", "Fort McMurray"}, []string{"Winnipeg"}}
+	complexTests[0].Map2DSlice["USA"] = [][]string{[]string{"San Diego", "Los Angeles"}}
 	tc := New()
 	rows, err := tc.Marshal(complexTests)
 	if err != nil {
@@ -739,6 +735,7 @@ func TestComplicated(t *testing.T) {
 
 func TestPtrs(t *testing.T) {
 	tst := []PtrTypes{
+		PtrTypes{},
 		PtrTypes{
 			Bool:        new(bool),
 			Bools:       []*bool{new(bool), new(bool)},
@@ -771,9 +768,22 @@ func TestPtrs(t *testing.T) {
 			"PBoolM", "PIntM", "PFloat64M", "PComplex128M", "PStringM",
 			"PKBoolM", "PKIntM", "PKFloat64M", "PKComplex128M", "PKStringM",
 		},
-		[]string{"false", "false,false", "",
-			"0", "0,0", "",
-			"0", "0,0", "",
+		[]string{
+			"", "", "",
+			"", "", "",
+			"", "", "",
+			"", "", "",
+			"", "", "",
+			"", "", "",
+			"", "", "", "", "",
+			"", "", "", "", "",
+			"", "", "", "", "",
+			"", "", "", "", "",
+		},
+		[]string{
+			"true", "true,true", "false,false",
+			"0", "0,0", "0",
+			"0", "0,0", "0",
 			"0+E00", "0+E00,0+E00", "",
 			"0+0i", "0+0i,0+0i", "",
 			"", ",", "",
@@ -783,15 +793,14 @@ func TestPtrs(t *testing.T) {
 			"", "", "", "", "",
 		},
 	}
-	pbool(tst[0].Bool, true)
-	pbool(tst[0].Bools[0], true)
-	pbool(tst[0].Bools[1], true)
-	pchan(tst[0].Chan)
-	pchan(tst[0].Chans[0])
-	pchan(tst[0].Chans[1])
-	pfunc(tst[0].Func)
-	pfunc(tst[0].Funcs[0])
-
+	pbool(tst[1].Bool, true)
+	pbool(tst[1].Bools[0], true)
+	pbool(tst[1].Bools[1], true)
+	pchan(tst[1].Chan)
+	pchan(tst[1].Chans[0])
+	pchan(tst[1].Chans[1])
+	pfunc(tst[1].Func)
+	pfunc(tst[1].Funcs[0])
 	tmp := make([]bool, 2)
 	tst[0].BoolPs = &tmp
 	m := make(map[bool]*bool)
@@ -801,6 +810,7 @@ func TestPtrs(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error %q", err)
 	}
+	//t.Errorf("\n%#v\n%#v\n", expected, data)
 	for i, v := range data {
 		if len(v) != len(expected[i]) {
 			t.Errorf("%d: expected row to have %d cols, got %d", i, len(expected[i]), len(v))
@@ -823,58 +833,40 @@ func TestPrivateMarshal(t *testing.T) {
 		expVal  reflect.Kind
 		expCols []string
 		isMap   bool
-		expErr  string
 	}{
-		{12, reflect.Int, reflect.Invalid, []string{"12"}, false, ""},
-		{12.4, reflect.Float64, reflect.Invalid, []string{"1.24E+01"}, false, ""},
-		{"Ni", reflect.String, reflect.Invalid, []string{"Ni"}, false, ""},
-		{(8 + 5i), reflect.Complex128, reflect.Invalid, []string{"(8+5i)"}, false, ""},
-		{[]chan int{}, reflect.Chan, reflect.Invalid, []string{}, false, "struct2csv:marshalSlice: unsupported type: chan"},
-		{[]func(){}, reflect.Func, reflect.Invalid, []string{}, false, "struct2csv:marshalSlice: unsupported type: func"},
-		{[]string{"a", "b", "c"}, reflect.String, reflect.Invalid, []string{"a,b,c"}, false, ""},
-		{[]*int{}, reflect.Int, reflect.Invalid, []string{""}, false, ""},
-		{new([]float32), reflect.Float32, reflect.Invalid, []string{""}, false, ""},
-		{new([]*float64), reflect.Float64, reflect.Invalid, []string{""}, false, ""},
+		{12, reflect.Int, reflect.Invalid, []string{"12"}, false},
+		{12.4, reflect.Float64, reflect.Invalid, []string{"1.24E+01"}, false},
+		{"Ni", reflect.String, reflect.Invalid, []string{"Ni"}, false},
+		{(8 + 5i), reflect.Complex128, reflect.Invalid, []string{"(8+5i)"}, false},
+		{[]chan int{}, reflect.Chan, reflect.Invalid, []string{}, false},
+		{[]func(){}, reflect.Func, reflect.Invalid, []string{}, false},
+		{[]string{"a", "b", "c"}, reflect.String, reflect.Invalid, []string{"a,b,c"}, false},
+		{[]*int{}, reflect.Int, reflect.Invalid, []string{""}, false},
+		{new([]float32), reflect.Float32, reflect.Invalid, []string{""}, false},
+		{new([]*float64), reflect.Float64, reflect.Invalid, []string{""}, false},
 
-		{[]**int{}, reflect.Int, reflect.Invalid, []string{"2"}, false, ""},
 		{[][]string{[]string{"a", "b", "c"}, []string{"d", "e", "f"}},
-			reflect.String, reflect.Invalid, []string{"a,b,c,d,e,f"}, false, ""},
-		{[][]*int{[]*int{}, []*int{}}, reflect.Int, reflect.Invalid, []string{"2,2,2"}, false, ""},
-		{map[string]int{"a": 1, "b": 2}, reflect.String, reflect.Int, []string{"a:1,b:2"}, true, ""},
-		{map[int]string{1: "a", 2: "b", 3: "c"}, reflect.Int, reflect.String, []string{"1:a,2:b,3:c"}, true, ""},
-		{new(map[int]bool), reflect.Int, reflect.Bool, []string{""}, true, ""},
-		{map[*func()]int{}, reflect.Func, reflect.Int, []string{}, true, "struct2csv:marshalMap: unsupported type: func"},
-		{map[int]func(){}, reflect.Int, reflect.Func, []string{}, true, "struct2csv:marshalMap: unsupported type: func"},
-		{map[chan int]string{}, reflect.Chan, reflect.String, []string{}, true, "struct2csv:marshalMap: unsupported type: chan"},
-		{map[string]chan int{}, reflect.String, reflect.Chan, []string{}, true, "struct2csv:marshalMap: unsupported type: chan"},
+			reflect.String, reflect.Invalid, []string{"(a,b,c),(d,e,f)"}, false},
+		{[][]*int{[]*int{}, []*int{}}, reflect.Int, reflect.Invalid, []string{"(2,2),(2)"}, false},
+		{map[string]int{"a": 1, "b": 2}, reflect.String, reflect.Int, []string{"a:1,b:2"}, true},
+		{map[int]string{1: "a", 2: "b", 3: "c"}, reflect.Int, reflect.String, []string{"1:a,2:b,3:c"}, true},
+		{new(map[int]bool), reflect.Int, reflect.Bool, []string{""}, true},
+		{map[*func()]int{}, reflect.Func, reflect.Int, []string{}, true},
+		{map[int]func(){}, reflect.Int, reflect.Func, []string{}, true},
+		{map[chan int]string{}, reflect.Chan, reflect.String, []string{}, true},
+		{map[string]chan int{}, reflect.String, reflect.Chan, []string{}, true},
+		{map[string]map[int]string{}, reflect.String, reflect.Int, []string{""}, true},
 
-		{map[string]**int{}, reflect.String, reflect.Int, []string{"key:2"}, true, ""},
-		{map[string]map[int]string{}, reflect.String, reflect.Int, []string{""}, true, ""},
 		{map[int]map[int]string{1: map[int]string{11: "a"}, 2: map[int]string{21: "A", 22: "B"}},
-			reflect.Int, reflect.Map, []string{"1:(11:a),2:(21:A,22:B)"}, true, ""},
-		{map[int]map[chan string]int{}, reflect.Int, reflect.Chan, []string{}, true, "struct2csv:marshalMap: unsupported type: chan"},
-		{map[int]map[string]chan int{}, reflect.Int, reflect.Chan, []string{}, true, "struct2csv:marshalMap: unsupported type: chan"},
+			reflect.Int, reflect.Map, []string{"1:(11:a),2:(21:A,22:B)"}, true},
+		{map[int]map[chan string]int{}, reflect.Int, reflect.Chan, []string{}, true},
 	}
-	var p []**int
 	var i = new(int) //*int
 	pint(i, 2)
-	p = append(p, &i)
-	tsts[10].val = p
-	tsts[12].val = [][]*int{[]*int{i, i}, []*int{i}}
-	tsts[20].val = map[string]**int{"key": &i}
+	tsts[11].val = [][]*int{[]*int{i, i}, []*int{i}}
 	enc := New()
 	for i, tst := range tsts {
-		cols, err := enc.marshal(reflect.ValueOf(tst.val))
-		if err != nil {
-			if err.Error() != tst.expErr {
-				t.Errorf("%d: expected marshal error: %q, got %q", i, tst.expErr, err)
-			}
-			continue
-		}
-		if tst.expErr != "" {
-			t.Errorf("%d: expected marshal error: %q, got none", i, tst.expErr)
-			continue
-		}
+		cols, _ := enc.marshal(reflect.ValueOf(tst.val), false)
 		if len(cols) != len(tst.expCols) {
 			t.Errorf("%d: expected marshal to result in %d rows, got %d", i, len(tst.expCols), len(cols))
 			continue
@@ -903,7 +895,7 @@ func TestPrivateMarshal(t *testing.T) {
 	}
 }
 
-func TestSupportedKind(t *testing.T) {
+func TestIsSupportedKind(t *testing.T) {
 	tsts := []struct {
 		kind reflect.Kind
 		ok   bool
@@ -937,7 +929,7 @@ func TestSupportedKind(t *testing.T) {
 		{reflect.UnsafePointer, false},
 	}
 	for i, tst := range tsts {
-		ok := supportedKind(tst.kind)
+		ok := isSupportedKind(tst.kind)
 		if ok != tst.ok {
 			t.Errorf("%d: expected %s to be supported == %t; got %t", i, tst.kind, tst.ok, ok)
 		}

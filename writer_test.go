@@ -152,7 +152,13 @@ func TestStructs(t *testing.T) {
 }
 
 func TestWriteStructsComplex(t *testing.T) {
-	expected := ""
+	expected := "MapMap,MapSlice,Map2DSlice,MapBasic,MapBasicSlice,MapBasic2DSlice\n" +
+		"\"Region 1:(colo1:rack1,colo2:rack2),Region 2:(colo11:rack11,colo12:rack12)\"," +
+		"\"Canada:(Alberta,British Columbia,Quebec),USA:(California,Florida,New York)\"," +
+		"\"Canada:((Calgary,Edmonton,Fort McMurray),(Winnipeg)),USA:((San Diego,Los Angeles))\"," +
+		"\"Gibson:(William Gibson,(Neuromancer,Count Zero,Mona Lisa Overdrive)),Herbert:(Frank Herbert,(Destination Void,Jesus Incident,Lazurus Effect))\"," +
+		"\"SciFi:((William Gibson,(Neuromancer,Count Zero,Mona Lisa Overdrive)),(Frank Herbert,(Destination Void,Jesus Incident,Lazurus Effect)))\"," +
+		"\"Sci-Fi:(((William Gibson,(Neuromancer,Count Zero,Mona Lisa Overdrive)),(Frank Herbert,(Destination Void,Jesus Incident,Lazurus Effect))),((Douglas Adams,(Restaurant at the End of the Universe))))\"\n"
 	buff := &bytes.Buffer{}
 	w := NewWriter(buff)
 	err := w.WriteStructs(complexTests)
@@ -162,6 +168,6 @@ func TestWriteStructsComplex(t *testing.T) {
 	}
 	s := buff.String()
 	if s != expected {
-		t.Errorf("got %s, want %s", s, expected)
+		t.Errorf("got %q, want %q", s, expected)
 	}
 }
