@@ -12,25 +12,25 @@ import (
 
 // A StructRequiredError is returned when a non-struct type is received.
 type StructRequiredError struct {
-	Kind reflect.Kind
+	kind reflect.Kind
 }
 
 func (e StructRequiredError) Error() string {
-	return fmt.Sprintf("struct2csv: a value of type struct is required: type was %s", e.Kind)
+	return fmt.Sprintf("struct2csv: a value of type struct is required: type was %s", e.kind)
 }
 
 // A StructSliceError is returned when an interface that isn't a slice of
 // type struct is received.
 type StructSliceError struct {
-	Kind      reflect.Kind
-	SliceKind reflect.Kind
+	kind      reflect.Kind
+	sliceKind reflect.Kind
 }
 
 func (e StructSliceError) Error() string {
-	if e.Kind != reflect.Slice {
-		return fmt.Sprintf("struct2csv: a type of slice is required: type was %s", e.Kind)
+	if e.kind != reflect.Slice {
+		return fmt.Sprintf("struct2csv: a type of slice is required: type was %s", e.kind)
 	}
-	return fmt.Sprintf("struct2csv: a slice of type struct is required: slice type was %s", e.SliceKind)
+	return fmt.Sprintf("struct2csv: a slice of type struct is required: slice type was %s", e.sliceKind)
 }
 
 var (
@@ -182,6 +182,9 @@ func (e *Encoder) getColNames(v interface{}) ([]string, bool) {
 // single structs.  If you wish to transmogrify everything at once, use
 // Encoder.Marshal([]T).
 func (e *Encoder) GetRow(v interface{}) ([]string, error) {
+	if reflect.TypeOf(v).Kind() != reflect.Struct {
+		return nil, StructRequiredError{reflect.TypeOf(v).Kind()}
+	}
 	// 2nd parm is only used for recursive calls.
 	cols, _ := e.marshalStruct(v, false)
 	return cols, nil
@@ -198,7 +201,7 @@ func (e *Encoder) GetRow(v interface{}) ([]string, error) {
 func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 	// must be a slice
 	if reflect.TypeOf(v).Kind() != reflect.Slice {
-		return nil, StructSliceError{Kind: reflect.TypeOf(v).Kind()}
+		return nil, StructSliceError{kind: reflect.TypeOf(v).Kind()}
 	}
 	val := reflect.ValueOf(v)
 	// must be a slice of struct
@@ -215,7 +218,7 @@ func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 		cols, _ := e.getColNames(s.Interface())
 		rows = append(rows, cols)
 	default:
-		return nil, StructSliceError{Kind: reflect.Slice, SliceKind: s.Kind()}
+		return nil, StructSliceError{kind: reflect.Slice, sliceKind: s.Kind()}
 	}
 	for i := 0; i < val.Len(); i++ {
 		s := val.Index(i)
