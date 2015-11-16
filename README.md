@@ -1,22 +1,20 @@
 # struct2csv
 [![Build Status](https://travis-ci.org/mohae/struct2csv.png)](https://travis-ci.org/mohae/struct2csv)
 
-Create CSV from a slice of structs.
-
-The output of a marshal is a `[][]string`, which `encoding/CSV` can use.
+Create either a CSV file or `[][]string` from a slice of structs.
 
 ## About
-Struct2csv takes a slice of structs and creates CSV data from them.  
+Struct2csv takes struct(s) and transforms them into CSV which can be either written to a provide writer with `encoding/csv` or returned as `[][]string` using `Marshal`.
 
 The field names are used as the first row of the csv data.  Use of field tags for csv header row column names is supported.  By default, struct2csv uses the looks for field tags for `csv`.  It can be configured to use the values of other field tags, e.g. `yaml` or `json`, instead, or, to ignore field tags.  
 
-Each slice element becomes its own row.  Struct fields that are slices will be transformed to a quoted list of comma separated values.  Struct fields that are maps will be transformed into a list of quoted key:value pairs.  More complex types use separators, "(" and ")" by default, to group subtypes: e.g. a field with the type `map[string][]string` will have an output similar to `key1: (key1, slice, values)`.  
+Each struct in the provided slice becomes its own row.  Slices are represented as a single column, with each element separated by a comma.  Maps are represented as a single column; entries become a comma separated list of key:value pairs.  Embedded struct fields become their own columns unless they are part of a slice or map.  More complex types use separators, "(" and ")" by default, to group subtypes: e.g. a field with the type `map[string][]string` will have an output similar to `key1: (key1, slice, values)`.  
 
 The separators to use can be set with `encoder.SetSeparators(begin, end)`. Passing empty strings, `""`, will result in no separators being used.  The separators are used for composite types with lists.
 
 Only exported columns become part of the csv data.  Some types, like channels and funcs, are skipped.
 
-If a non-slice is received, an error will be returned.  Any error encountered will be returned.
+If a non-struct Kind is received, an error will occur. If a non-slice is passed to `Marshal` or `WriteStructs`, an error will be returned.
 
 ## Usage
 ### Using Directly
@@ -61,7 +59,7 @@ This Writer exposes csv,Writer's methods using wrapper methods.  Struct2csv's Wr
     data := []MyStruct{MyStruct{}, MyStruct{}}
     buff := &bytes.Buffer{}
     w := struct2csv.NewWriter(buff)
-    err := w.WriteStructs(data)
+    err := w.WriteAll(data)
     if err != nil {
             // handle error
     }
@@ -78,7 +76,7 @@ This Writer exposes csv,Writer's methods using wrapper methods.  Struct2csv's Wr
     }
     // get the data from each struct
     for _, v := range data {
-            err = w.WriteStruct
+            err = w.Write
             if err != nil {
                     // handle error
             }
@@ -154,19 +152,27 @@ If the map's value is a composite type, the values of the composite type become 
 
 becomes:
 
-    ((Frank Herbert: (Destination Void, Jesus Incident, Lazurus Effect)),
-    (William Gibson:(Neuromancer, Count Zero, Mona Lisa Overdrive)))
+    Frank Herbert:(Destination Void, Jesus Incident, Lazurus Effect),William Gibson:(Neuromancer, Count Zero, Mona Lisa Overdrive)
 
 #### Slices and Arrays
 Slices and arrays are a single column in the resulting CSV as slices can have a variable number of elements and there is no way to account for this within CSV.  Arrays are treated the same as slices.  Slices become a comma separated list of values.
 
 #### Structs
-TODO add doc.
+Struct fields become their own column.  If the struct is embedded, only its field name is used for the column name.  This may lead to some ambiguity in column names.  Options to either prefix the embedded struct's field name with the struct name, or with the full path to the struct, in the case of deeply nested embedded structs may be added in the future (pull requests supporting this are also welcome!)  If the struct is part of a composite type, like a map or slice, it will be part of that column with its data nested, using separators as appropriate.
+
+#### Pointers and nils
+Pointers are dereferenced.  Struct field types using multiple, consecutive pointers, e.g. `**string`, are not supported.  Struct fields with composite types support mulitple, non-consecutive pointers, for whatever reason, e.g. `*[]*string`, `*map[*string]*[]*string`, are supported.
+
+A nil result in an empty string, regardless of its type.
 
 ### Header row
-It is possible to get the header row for a struct by calling the `GetHeaders()` func with the struct for which you want the column names
+It is possible to get the header row for a struct by calling the `GetHeaders` func with the struct from which you want the column names.  The names are returned as a `[]string`.
+
+### Data of a single struct
+It is possible to get the data from a single struct by calling the `GetStructData` func with the struct from which you want the column data. The data is returned as a `[]string`.
 
 ## TODO
 
 * Add support for field tag value of `-` to explicitly skip fields.
 * Add option to add names of embedded structs to the column header for its fields.
+* Add support for `interface{}`
