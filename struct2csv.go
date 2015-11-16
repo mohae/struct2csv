@@ -130,8 +130,7 @@ func (e *Encoder) GetColNames(v interface{}) ([]string, error) {
 	if reflect.TypeOf(v).Kind() != reflect.Struct {
 		return nil, StructRequiredError{reflect.TypeOf(v).Kind()}
 	}
-	// the returned bool is ignored because it's only used for recursive
-	// calls.
+	// the returned bool is ignored because it's only used for recursive calls.
 	names, _ := e.getColNames(v)
 	// keep a copy
 	e.colNames = make([]string, len(names))
@@ -197,8 +196,7 @@ func (e *Encoder) GetRow(v interface{}) ([]string, error) {
 // that are maps are stored in a single column as a comma separted list of
 // key:value pairs.
 //
-// If the passed data isn't a slice of structs or an error occurs during
-// processing, an error will be returned.
+// If the passed data isn't a slice of structs an error will be returned.
 func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 	// must be a slice
 	if reflect.TypeOf(v).Kind() != reflect.Slice {
