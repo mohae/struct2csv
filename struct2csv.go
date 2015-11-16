@@ -491,32 +491,6 @@ func sliceKind(val reflect.Value) reflect.Kind {
 	return val.Type().Elem().Kind()
 }
 
-// baseSliceKind returns the Kind of the slice. If the slice is a slice of a
-// composite type, that type's base Kind will be returned; e.g. reflect.Int
-// will be returned for [][]*Int.
-func baseSliceKind(val reflect.Value) reflect.Kind {
-	k, _ := baseKind(val.Type().Elem())
-	return k
-}
-
-// mapKind returns the Kind of the key and value types of a map; e.g.
-// reflect.String and reflect.Map will be returned for map[string]map[int]int.
-func mapKind(val reflect.Value) (k, v reflect.Kind) {
-	if val.Kind() == reflect.Ptr {
-		return mapKind(val.Elem())
-	}
-	k = val.Type().Key().Kind()
-	if k == reflect.Ptr {
-		k, _ = baseKind(val.Type().Key())
-	}
-	if val.Type().Elem().Kind() == reflect.Ptr {
-		v = ptrKind(val.Type().Elem())
-		return k, v
-	}
-	v = val.Type().Elem().Kind()
-	return k, v
-}
-
 // baseMapKind returns the the Kind of the key and value types of a map.  If
 // the map consists of other maps, the Kind of the key of the lowest level map
 // will be returned; e.g. reflect.String and reflect.Int will be returned for
