@@ -133,6 +133,9 @@ func (e *Encoder) GetColNames(v interface{}) ([]string, error) {
 	// the returned bool is ignored because it's only used for recursive
 	// calls.
 	names, _ := e.getColNames(v)
+	// keep a copy
+	e.colNames = make([]string, len(names))
+	_ = copy(e.colNames, names)
 	return names, nil
 }
 
@@ -173,8 +176,6 @@ func (e *Encoder) getColNames(v interface{}) ([]string, bool) {
 		}
 		cols = append(cols, name)
 	}
-	e.colNames = make([]string, len(cols))
-	_ = copy(e.colNames, cols)
 	return cols, true
 }
 
@@ -216,6 +217,10 @@ func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 	switch s.Kind() {
 	case reflect.Struct:
 		cols, _ := e.getColNames(s.Interface())
+		// keep a copy
+		e.colNames = make([]string, len(cols))
+		_ = copy(e.colNames, cols)
+		// add as a row
 		rows = append(rows, cols)
 	default:
 		return nil, StructSliceError{kind: reflect.Slice, sliceKind: s.Kind()}
