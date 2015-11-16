@@ -551,12 +551,3 @@ func isSupportedKind(k reflect.Kind) bool {
 	}
 	return true
 }
-
-// see's if what's being pointed returns a zero value;
-func isZero(val reflect.Value) bool {
-	v := reflect.Indirect(val)
-	if v == reflect.Zero(val.Type()) {
-		return true
-	}
-	return false
-}
