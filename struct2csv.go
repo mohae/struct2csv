@@ -131,7 +131,7 @@ func (e *Encoder) GetColNames(v interface{}) ([]string, error) {
 		return nil, StructRequiredError{reflect.TypeOf(v).Kind()}
 	}
 	// the returned bool is ignored because it's only used for recursive calls.
-	names, _ := e.getColNames(v)
+	names := e.getColNames(v)
 	// keep a copy
 	e.colNames = make([]string, len(names))
 	_ = copy(e.colNames, names)
@@ -140,7 +140,7 @@ func (e *Encoder) GetColNames(v interface{}) ([]string, error) {
 
 // The private func where the work is done.  This also copies the headers
 // to the Encoder.colNames field.
-func (e *Encoder) getColNames(v interface{}) ([]string, bool) {
+func (e *Encoder) getColNames(v interface{}) []string {
 	typ := reflect.TypeOf(v)
 	val := reflect.ValueOf(v)
 	var cols []string
@@ -153,10 +153,7 @@ func (e *Encoder) getColNames(v interface{}) ([]string, bool) {
 		vF := val.Field(i)
 		switch vF.Kind() {
 		case reflect.Struct:
-			tmp, ok := e.getColNames(vF.Interface())
-			if !ok {
-				return nil, false
-			}
+			tmp := e.getColNames(vF.Interface())
 			cols = append(cols, tmp...)
 			continue
 		default:
@@ -175,7 +172,7 @@ func (e *Encoder) getColNames(v interface{}) ([]string, bool) {
 		}
 		cols = append(cols, name)
 	}
-	return cols, true
+	return cols
 }
 
 // GetRow get's the data from the passed struct. This only operates on
@@ -214,7 +211,7 @@ func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 	s := val.Index(0)
 	switch s.Kind() {
 	case reflect.Struct:
-		cols, _ := e.getColNames(s.Interface())
+		cols := e.getColNames(s.Interface())
 		// keep a copy
 		e.colNames = make([]string, len(cols))
 		_ = copy(e.colNames, cols)
