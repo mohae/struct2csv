@@ -15,11 +15,8 @@ import (
 	"io"
 )
 
-// A Writer writes structs to a CSV encoded file.
-//
-// This wraps both `csv.Writer` and this package's `Encoder`.
-//
-// The public methods of both the Writer and the Encoder are exposed.
+// A Writer writes structs to a CSV encoded file.  This wraps both `csv.Writer`
+// and this package's `Encoder`.
 type Writer struct {
 	e Encoder
 	w *csv.Writer

@@ -59,7 +59,7 @@ This Writer exposes csv,Writer's methods using wrapper methods.  Struct2csv's Wr
     data := []MyStruct{MyStruct{}, MyStruct{}}
     buff := &bytes.Buffer{}
     w := struct2csv.NewWriter(buff)
-    err := w.WriteAll(data)
+    err := w.WriteStructs(data)
     if err != nil {
             // handle error
     }

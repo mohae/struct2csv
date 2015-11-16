@@ -1,4 +1,22 @@
-// Package struct2csv creates CSV rows out of structs.
+// Package struct2csv creates slices of strings out of struct fields.
+// Struct2csv can work with either a struct or a slice of structs,  The data
+// can be returned as []string, in the case of a single struct, or [][]string,
+// in the case of a slice of structs, by using struct2csv's encoder and
+// `Marshal`.
+//
+// For writing struct data directly to a CSV file, a writer can be used.
+// `NewWriter` accepts an `io.Writer` and uses it to create a `csv.Writer`,
+// which is used for writing the generated data.  The `csv.Writer`'s exported
+// fields are exposed as methods.
+//
+// Fields of Kind Uintptr, Unsafepointer, Chan, Func, and Interface are not
+// supported.
+//
+// Unexported fields will be ignored.
+//
+// Field tags are supported.  Struct2csv will look for field tags matching
+// `csv`, unless it's configured to either ignore field tags or use different
+// field tag.
 package struct2csv
 
 import (
@@ -208,6 +226,7 @@ func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 		return nil, ErrEmptySlice
 	}
 	var rows [][]string
+	// get the first value in the slice to get the struct's field names
 	s := val.Index(0)
 	switch s.Kind() {
 	case reflect.Struct:
@@ -220,6 +239,7 @@ func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 	default:
 		return nil, StructSliceError{kind: reflect.Slice, sliceKind: s.Kind()}
 	}
+	// go through each element in the slice and marshal the element'd data.
 	for i := 0; i < val.Len(); i++ {
 		s := val.Index(i)
 		row, ok := e.marshalStruct(s.Interface(), false)
@@ -232,12 +252,11 @@ func (e *Encoder) Marshal(v interface{}) ([][]string, error) {
 	return rows, nil
 }
 
-// marshal returns the marshaled struct as a slice of column values, as
-// sa slice of strings.  Values of unsupported Kinds return nil
-func (e *Encoder) marshal(val reflect.Value, child bool) ([]string, bool) {
-	var cols []string
+// marshal returns the marshaled value. If the received value is not of a
+// supported Kind, a nil is returned along with false. For supported kinds, a
+// slice of values is returned along with true.
+func (e *Encoder) marshal(val reflect.Value, child bool) (cols []string, ok bool) {
 	var s string
-	var ok bool
 	switch val.Kind() {
 	case reflect.Ptr:
 		// for maps and slices, check that they are of supported types
@@ -274,6 +293,7 @@ func (e *Encoder) marshal(val reflect.Value, child bool) ([]string, bool) {
 	return append(cols, s), true
 }
 
+// marshal struct field data into a slice.
 func (e *Encoder) marshalStruct(str interface{}, child bool) ([]string, bool) {
 	var cols []string
 	val := reflect.ValueOf(str)
@@ -293,8 +313,8 @@ func (e *Encoder) marshalStruct(str interface{}, child bool) ([]string, bool) {
 	return cols, true
 }
 
-// marshal map handles marshalling of maps.  If the map's key type is
-// supported is determined by the caller.
+// marshal map handles marshalling of maps.  Both the key and value types must
+// be supported Kinds.
 func (e *Encoder) marshalMap(m reflect.Value, child bool) (string, bool) {
 	var ok bool
 	if ok = supportedBaseKind(m); !ok {
@@ -304,6 +324,7 @@ func (e *Encoder) marshalMap(m reflect.Value, child bool) (string, bool) {
 	var row string
 	var sv stringValues = m.MapKeys()
 	// sort the map keys first
+	// TODO have this work on things other than string?
 	sort.Sort(sv)
 	for i, key := range sv {
 		val := m.MapIndex(key)
@@ -375,9 +396,9 @@ func (e *Encoder) marshalSlice(val reflect.Value, child bool) (string, bool) {
 	return sl, true
 }
 
-// stringify takes a interface and returns the value it contains as a string.
-// This is not ment for composite types.  If the type is not supported, an
-// error will be returned.
+// stringify takes a interface and returns the value it contains as a string
+// and true.  Composite types will first be marshaled.  If the received Kind is
+// not supported, and empty string and false will be returned.
 func (e *Encoder) stringify(v reflect.Value, child bool) (string, bool) {
 	if !isSupportedKind(v.Kind()) {
 		return "", false
@@ -415,9 +436,8 @@ func (e *Encoder) stringify(v reflect.Value, child bool) (string, bool) {
 	}
 }
 
-// ptrKind returns the Kind that it points to; if it's another
-// pointer, this wil recurse until it encounters a non-pointer
-// kind.
+// ptrKind returns the Kind that it points to; if it's another pointer, this
+// will recurse until it encounters a non-pointer kind.
 func ptrKind(typ reflect.Type) reflect.Kind {
 	if typ.Kind() == reflect.Ptr {
 		return ptrKind(typ.Elem())
@@ -425,15 +445,15 @@ func ptrKind(typ reflect.Type) reflect.Kind {
 	return typ.Kind()
 }
 
-// baseKind returns the baseKind of the type. For pointers, it's
-// the Kind of the first non-pointer element. For slices, it's
-// the Kind of the slice type, e.g. []int's kind is int.  For
-// maps, it's the Kind of the key and value of the map.  If the
-// map consists of other maps, the key of the lowest level map
-// will be returned.
+// baseKind returns the baseKind of the type.
 //
-// For non-map Kinds, v will be reflect.Invalid; which should be
-// ignored.  For maps, v will be the Kind
+// For pointers, it's the Kind of the first non-pointer type.
+// For slices, it's the Kind of the slice type, e.g. []int's kind is int.
+// For maps, it's the Kind of the key and value of the map.  If the map
+// consists of other maps, the key of the lowest level map will be returned.
+//
+// For non-map Kinds, v will be reflect.Invalid; which should be ignored.  For
+// maps, v will be the Kind
 func baseKind(typ reflect.Type) (k, v reflect.Kind) {
 	switch typ.Kind() {
 	case reflect.Ptr:
@@ -461,8 +481,8 @@ func supportedBaseKind(val reflect.Value) bool {
 	return true
 }
 
-// sliceKind returns the Kind of the slice; e.g.
-// reflect.Slice will be returned for [][]*int.
+// sliceKind returns the Kind of the slice; e.g. reflect.Slice will be
+//returned for [][]*int.
 func sliceKind(val reflect.Value) reflect.Kind {
 	switch val.Type().Elem().Kind() {
 	case reflect.Ptr:
@@ -471,18 +491,16 @@ func sliceKind(val reflect.Value) reflect.Kind {
 	return val.Type().Elem().Kind()
 }
 
-// baseSliceKind returns the Kind of the slice. If the
-// slice is a slice of a composite type, that type's
-// Kind will be returned; e.g. reflect.Int will be
-// returned for [][]*Int.
+// baseSliceKind returns the Kind of the slice. If the slice is a slice of a
+// composite type, that type's base Kind will be returned; e.g. reflect.Int
+// will be returned for [][]*Int.
 func baseSliceKind(val reflect.Value) reflect.Kind {
 	k, _ := baseKind(val.Type().Elem())
 	return k
 }
 
-// mapKind returns the Kind of the key and value types of
-// a map; e.g. reflect.String and reflect.Map will be
-// returned for map[string]map[int]string.
+// mapKind returns the Kind of the key and value types of a map; e.g.
+// reflect.String and reflect.Map will be returned for map[string]map[int]int.
 func mapKind(val reflect.Value) (k, v reflect.Kind) {
 	if val.Kind() == reflect.Ptr {
 		return mapKind(val.Elem())
@@ -499,10 +517,9 @@ func mapKind(val reflect.Value) (k, v reflect.Kind) {
 	return k, v
 }
 
-// baseMapKind returns the the Kind of the key and value types
-// of a map.  If the map consists of other maps, the Kind of
-// the key of the lowest level map will be returned; e.g.
-// reflect.String and reflect.Int will be returned for
+// baseMapKind returns the the Kind of the key and value types of a map.  If
+// the map consists of other maps, the Kind of the key of the lowest level map
+// will be returned; e.g. reflect.String and reflect.Int will be returned for
 // map[string]map[int]string.
 func baseMapKind(typ reflect.Type) (k, v reflect.Kind) {
 	if typ.Kind() == reflect.Ptr {
@@ -516,9 +533,7 @@ func baseMapKind(typ reflect.Type) (k, v reflect.Kind) {
 	return k, v
 }
 
-// returns the actual kind of the value, ptrs will be dereference. slices will
-// have their Kind returned, maps will return the Kind of the key.  This
-// func assumes ptrs have been dereferenced.
+// returns whether or not the Kind is supported for usage in CSV.
 func isSupportedKind(k reflect.Kind) bool {
 	switch k {
 	case reflect.Chan:
