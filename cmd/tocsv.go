@@ -1,3 +1,5 @@
+// A simple example cli that generates a csv file using canned data.  The file
+// is written to tmp and the location of the file is displayed to the user.
 package main
 
 import (
