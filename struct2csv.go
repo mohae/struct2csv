@@ -165,7 +165,7 @@ func (e *Encoder) getColNames(v interface{}) []string {
 	for i := 0; i < typ.NumField(); i++ {
 		// skip unexported
 		tF := typ.Field(i)
-		if tF.PkgPath != "" {
+		if len(tF.PkgPath) > 0 {
 			continue
 		}
 		vF := val.Field(i)
@@ -299,7 +299,7 @@ func (e *Encoder) marshalStruct(str interface{}, child bool) ([]string, bool) {
 	val := reflect.ValueOf(str)
 	typ := reflect.TypeOf(str)
 	for i := 0; i < typ.NumField(); i++ {
-		if typ.Field(i).PkgPath != "" {
+		if len(typ.Field(i).PkgPath) > 0 {
 			continue
 		}
 		vF := val.Field(i)
