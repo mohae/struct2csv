@@ -9,14 +9,14 @@ import (
 )
 
 type Tags struct {
-	Int          int   `json:"number" csv:"Number"`
-	Ints         []int `json:"numbers" csv:"Numbers"`
+	Int          int   `json:"number" csv:"Number" test:"-"`
+	Ints         []int `json:"numbers" csv:"Numbers" test:"-"`
 	ints         []int
-	String       string            `json:"word" csv:"Word"`
-	Strings      []string          `json:"words" csv:"Words"`
-	StringString map[string]string `json:"mapstringstring" csv:"MapStringString"`
-	StringInt    map[string]int    `json:"mapstringint" csv:"MapStringInt"`
-	IntInt       map[int]int       `json:"mapintint" csv:"MapIntInt"`
+	String       string            `json:"word" csv:"Word" test:"-"`
+	Strings      []string          `json:"words" csv:"Words" test:"-"`
+	StringString map[string]string `json:"mapstringstring" csv:"MapStringString" test:"-"`
+	StringInt    map[string]int    `json:"mapstringint" csv:"MapStringInt" test:"-"`
+	IntInt       map[int]int       `json:"mapintint" csv:"MapIntInt" test:"-"`
 	strings      []string
 }
 
@@ -260,7 +260,7 @@ func TestGetColNames(t *testing.T) {
 	tc.useTags = false
 	hdr, err := tc.GetColNames(Tags{})
 	if err != nil {
-		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
+		t.Errorf("unexpected error getting header information: %q", err)
 		goto CSVTAG
 	}
 	if len(hdr) != len(expectedTagCols) {
@@ -277,7 +277,7 @@ CSVTAG:
 	tc.useTags = true
 	hdr, err = tc.GetColNames(Tags{})
 	if err != nil {
-		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
+		t.Errorf("unexpected error getting header information: %q", err)
 		goto JSONTAG
 	}
 	if len(hdr) != len(expectedTagCSVCols) {
@@ -295,7 +295,7 @@ JSONTAG:
 	tc.tag = "json"
 	hdr, err = tc.GetColNames(Tags{})
 	if err != nil {
-		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
+		t.Errorf("unexpected error getting header information: %q", err)
 		goto EMBED
 	}
 	if len(hdr) != len(expectedTagJSONCols) {
@@ -307,10 +307,11 @@ JSONTAG:
 			t.Errorf("%d: expected %q got %q", i, expectedTagJSONCols[i], v)
 		}
 	}
+
 EMBED:
 	hdr, err = tc.GetColNames(Embedded{})
 	if err != nil {
-		t.Errorf("unexpected error getting header information from Tst{}: %q", err)
+		t.Errorf("unexpected error getting header information: %q", err)
 		return
 	}
 	if len(hdr) != len(expectedEmbedCols) {
@@ -322,6 +323,35 @@ EMBED:
 		if v != expectedEmbedCols[i] {
 			t.Errorf("%d: expected %q got %q", i, expectedEmbedCols[i], v)
 		}
+	}
+}
+
+func TestIgnoreTags(t *testing.T) {
+	ts := Tags{
+		Int: 42, Ints: []int{11, 3}, ints: []int{1, 2, 3},
+		String: "hoopy frood", Strings: []string{"don't", "panic"},
+		StringString: map[string]string{"hello": "bonjour"},
+		StringInt:    map[string]int{"une": 1},
+		IntInt:       map[int]int{1: 11},
+		strings:      []string{"marvin"},
+	}
+	// test fields tagged with -
+	enc := New()
+	enc.useTags = true
+	enc.tag = "test"
+	names, err := enc.GetColNames(ts)
+	if err != nil {
+		t.Errorf("unexpected error getting header information: %q", err)
+	}
+	if len(names) > 0 {
+		t.Errorf("expected no column names, got %v", names)
+	}
+	vals, ok := enc.marshalStruct(ts, false)
+	if !ok {
+		t.Errorf("expected true got %t", ok)
+	}
+	if len(vals) != 0 {
+		t.Errorf("expected no column values, got %v", vals)
 	}
 }
 

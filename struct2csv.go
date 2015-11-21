@@ -168,6 +168,10 @@ func (e *Encoder) getColNames(v interface{}) []string {
 		if len(tF.PkgPath) > 0 {
 			continue
 		}
+		name := e.getFieldName(tF)
+		if name == "" {
+			continue
+		}
 		vF := val.Field(i)
 		switch vF.Kind() {
 		case reflect.Struct:
@@ -179,14 +183,6 @@ func (e *Encoder) getColNames(v interface{}) []string {
 			if !ok {
 				continue
 			}
-		}
-		var name string
-		if e.useTags {
-			name = tF.Tag.Get(e.tag)
-		}
-		// If there isn't a matching field tag, use the Field Name
-		if name == "" {
-			name = tF.Name
 		}
 		cols = append(cols, name)
 	}
@@ -299,7 +295,12 @@ func (e *Encoder) marshalStruct(str interface{}, child bool) ([]string, bool) {
 	val := reflect.ValueOf(str)
 	typ := reflect.TypeOf(str)
 	for i := 0; i < typ.NumField(); i++ {
-		if len(typ.Field(i).PkgPath) > 0 {
+		tF := typ.Field(i)
+		if len(tF.PkgPath) > 0 {
+			continue
+		}
+		name := e.getFieldName(tF)
+		if name == "" {
 			continue
 		}
 		vF := val.Field(i)
@@ -524,4 +525,22 @@ func isSupportedKind(k reflect.Kind) bool {
 		return false
 	}
 	return true
+}
+
+// getFieldName gets the field name.  If field tags are being used and the field
+// is tagged with -, or skip this field, an empty string will be returned;
+// which is a signal to skip this field.
+func (e *Encoder) getFieldName(field reflect.StructField) string {
+	if e.useTags {
+		name := field.Tag.Get(e.tag)
+		// skip columns tagged with -
+		if name == "-" {
+			return ""
+		}
+		if name != "" {
+			return name
+		}
+	}
+	return field.Name
+
 }
