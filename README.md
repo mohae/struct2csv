@@ -12,7 +12,7 @@ Each struct in the provided slice becomes its own row.  Slices are represented a
 
 The separators to use can be set with `encoder.SetSeparators(begin, end)`. Passing empty strings, `""`, will result in no separators being used.  The separators are used for composite types with lists.
 
-Only exported columns become part of the csv data.  Some types, like channels and funcs, are skipped.
+Only exported fields become part of the csv data, unless the field's struct tag is `-`.  Some types, like channels and funcs, are skipped.
 
 If a non-struct Kind is received, an error will occur. If a non-slice is passed to `Marshal` or `WriteStructs`, an error will be returned.
 
@@ -173,6 +173,5 @@ It is possible to get the data from a single struct by calling the `GetStructDat
 
 ## TODO
 
-* Add support for field tag value of `-` to explicitly skip fields.
 * Add option to add names of embedded structs to the column header for its fields.
 * Add support for `interface{}`
