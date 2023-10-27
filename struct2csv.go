@@ -172,6 +172,12 @@ func (e *Encoder) getColNames(v interface{}) []string {
 		if name == "" {
 			continue
 		}
+		fieldHandler := tF.Tag.Get("handler")
+		if fieldHandler != "" {
+			cols = append(cols, name)
+			continue
+		}
+		
 		vF := val.Field(i)
 		switch vF.Kind() {
 		case reflect.Struct:
@@ -304,6 +310,17 @@ func (e *Encoder) marshalStruct(str interface{}, child bool) ([]string, bool) {
 			continue
 		}
 		vF := val.Field(i)
+
+		fieldHandler := tF.Tag.Get("handler")
+		if fieldHandler != "" {
+			method := reflect.ValueOf(str).MethodByName(fieldHandler)
+			if method.IsValid() {
+				values := method.Call([]reflect.Value{vF})
+				cols = append(cols, values[0].String())
+			}
+			continue
+		}
+
 		tmp, ok := e.marshal(vF, child)
 		if !ok {
 			// wasn't a supported kind, skip
