@@ -160,6 +160,23 @@ Slices and arrays are a single column in the resulting CSV as slices can have a 
 #### Structs
 Struct fields become their own column.  If the struct is embedded, only its field name is used for the column name.  This may lead to some ambiguity in column names.  Options to either prefix the embedded struct's field name with the struct name, or with the full path to the struct, in the case of deeply nested embedded structs may be added in the future (pull requests supporting this are also welcome!)  If the struct is part of a composite type, like a map or slice, it will be part of that column with its data nested, using separators as appropriate.
 
+##### Custom Handler for Structs
+You can configure custom handlers for a struct:
+
+```yaml
+type DateStruct struct {
+    Name  string
+    Start time.Time `json:"start" csv:"Start" handler:"ConvertTime"`
+    End   time.Time `json:"end" csv:"End" handler:"ConvertTime"`
+}
+
+func (DateStruct) ConvertTime(t time.Time) string {
+    return t.UTC().String()
+}
+```
+
+The `ConvertTime` handler of the struct (not the field) will be called with the field's value. The first returned value will be used as the csv-value.
+
 #### Pointers and nils
 Pointers are dereferenced.  Struct field types using multiple, consecutive pointers, e.g. `**string`, are not supported.  Struct fields with composite types support mulitple, non-consecutive pointers, for whatever reason, e.g. `*[]*string`, `*map[*string]*[]*string`, are supported.
 
