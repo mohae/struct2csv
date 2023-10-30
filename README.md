@@ -163,7 +163,7 @@ Struct fields become their own column.  If the struct is embedded, only its fiel
 ##### Custom Handler for Structs
 You can configure custom handlers for a struct:
 
-```yaml
+```go
 type DateStruct struct {
     Name  string
     Start time.Time `json:"start" csv:"Start" handler:"ConvertTime"`
@@ -173,9 +173,34 @@ type DateStruct struct {
 func (DateStruct) ConvertTime(t time.Time) string {
     return t.UTC().String()
 }
+
+func main() {
+    date := DateStruct{
+        Name: "test",
+        Start: time.Now(),
+        End: time.Now().Add(time.Hour * 24),
+    }
+    
+    enc := New()
+    enc.SetHandlerTag("handler")
+    row, err := enc.GetRow(date)
+}
 ```
 
-The `ConvertTime` handler of the struct (not the field) will be called with the field's value. The first returned value will be used as the csv-value.
+The `ConvertTime` handler of the struct (not the field) will be called with the field's value.
+
+To enhance the flexibility:
+
+    - multiple handlers per struct are supported (just one `ConvertTime` in the example)
+    - you need to explicitly set the handler-tag-name of the encoder (`handler` in the example) to avoid unexpected interference
+
+All handlers need to implement an interface like this:
+
+```go
+func (s S) MyHandler(v interface{}) string
+```
+
+It needs to return a string, which will be used as the csv-value for the field.
 
 #### Pointers and nils
 Pointers are dereferenced.  Struct field types using multiple, consecutive pointers, e.g. `**string`, are not supported.  Struct fields with composite types support mulitple, non-consecutive pointers, for whatever reason, e.g. `*[]*string`, `*map[*string]*[]*string`, are supported.

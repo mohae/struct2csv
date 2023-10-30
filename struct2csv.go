@@ -322,7 +322,11 @@ func (e *Encoder) marshalStruct(str interface{}, child bool) ([]string, bool) {
 			method := reflect.ValueOf(str).MethodByName(fieldHandler)
 			if method.IsValid() {
 				values := method.Call([]reflect.Value{vF})
-				cols = append(cols, values[0].String())
+				value := ""
+				if len(values) > 0 {
+					value = values[0].String()
+				}
+				cols = append(cols, value)
 			}
 			continue
 		}
