@@ -360,8 +360,8 @@ func TestIgnoreTags(t *testing.T) {
 
 type DateStruct struct {
 	Name  string
-	Start time.Time `json:"start" csv:"Start" handler:"ConvertTime"`
-	End   time.Time `json:"end" csv:"End" handler:"ConvertTime"`
+	Start time.Time `handler:"ConvertTime"`
+	End   time.Time `handler:"ConvertTime"`
 }
 
 func (DateStruct) ConvertTime(t time.Time) string {
@@ -370,23 +370,22 @@ func (DateStruct) ConvertTime(t time.Time) string {
 
 func TestHandlerTag(t *testing.T) {
 	testDate := time.Date(2023, 01, 02, 03, 04, 05, 0, time.UTC)
-	ts := DateStruct{
+	date := DateStruct{
 		Name: "test",
 		Start: testDate,
 		End: testDate.Add(time.Hour * 24),
 	}
 
 	enc := New()
-	names, err := enc.GetColNames(ts)
+	enc.SetHandlerTag("handler")
+	names, err := enc.GetColNames(date)
 	assert.NoError(t, err)
-	assert.Len(t, names, 3)
 	assert.Equal(t, []string{"Name", "Start", "End"}, names)
 
-	vals, ok := enc.marshalStruct(ts, false)
+	vals, ok := enc.marshalStruct(date, false)
 	assert.True(t, ok)
-	assert.Len(t, vals, 3)
-	assert.Equal(t, "2023-01-02 03:04:05 +0000 UTC", vals[1])
-	assert.Equal(t, "2023-01-03 03:04:05 +0000 UTC", vals[2])
+	assert.Equal(t, []string{"test", "2023-01-02 03:04:05 +0000 UTC", "2023-01-03 03:04:05 +0000 UTC"}, vals)
+}
 }
 
 func TestMarshal(t *testing.T) {
