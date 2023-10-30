@@ -191,8 +191,8 @@ The `ConvertTime` handler of the struct (not the field) will be called with the 
 
 To enhance the flexibility:
 
-    - multiple handlers per struct are supported (just one `ConvertTime` in the example)
-    - you need to explicitly set the handler-tag-name of the encoder (`handler` in the example) to avoid unexpected interference
+* multiple handlers per struct are supported (just one `ConvertTime` in the example)
+* you need to explicitly set the handler-tag-name of the encoder (`handler` in the example) to avoid unexpected interference
 
 All handlers need to implement an interface like this:
 
