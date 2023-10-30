@@ -160,6 +160,48 @@ Slices and arrays are a single column in the resulting CSV as slices can have a 
 #### Structs
 Struct fields become their own column.  If the struct is embedded, only its field name is used for the column name.  This may lead to some ambiguity in column names.  Options to either prefix the embedded struct's field name with the struct name, or with the full path to the struct, in the case of deeply nested embedded structs may be added in the future (pull requests supporting this are also welcome!)  If the struct is part of a composite type, like a map or slice, it will be part of that column with its data nested, using separators as appropriate.
 
+##### Custom Handler for Structs
+You can configure custom handlers for a struct:
+
+```go
+type DateStruct struct {
+    Name  string
+    Start time.Time `json:"start" csv:"Start" handler:"ConvertTime"`
+    End   time.Time `json:"end" csv:"End" handler:"ConvertTime"`
+}
+
+func (DateStruct) ConvertTime(t time.Time) string {
+    return t.UTC().String()
+}
+
+func main() {
+    date := DateStruct{
+        Name: "test",
+        Start: time.Now(),
+        End: time.Now().Add(time.Hour * 24),
+    }
+    
+    enc := New()
+    enc.SetHandlerTag("handler")
+    row, err := enc.GetRow(date)
+}
+```
+
+The `ConvertTime` handler of the struct (not the field) will be called with the field's value.
+
+To enhance the flexibility:
+
+* multiple handlers per struct are supported (just one `ConvertTime` in the example)
+* you need to explicitly set the handler-tag-name of the encoder (`handler` in the example) to avoid unexpected interference
+
+All handlers need to implement an interface like this:
+
+```go
+func (s S) MyHandler(v interface{}) string
+```
+
+It needs to return a string, which will be used as the csv-value for the field.
+
 #### Pointers and nils
 Pointers are dereferenced.  Struct field types using multiple, consecutive pointers, e.g. `**string`, are not supported.  Struct fields with composite types support mulitple, non-consecutive pointers, for whatever reason, e.g. `*[]*string`, `*map[*string]*[]*string`, are supported.
 

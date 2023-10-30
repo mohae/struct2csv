@@ -77,18 +77,19 @@ func (sv stringValues) get(i int) string   { return sv[i].String() }
 // Encoder handles encoding of a CSV from a struct.
 type Encoder struct {
 	// Whether or not tags should be use for header (column) names; by default this is csv,
-	useTags  bool
-	base     int
-	tag      string // The tag to use when tags are being used for headers; defaults to csv.
-	sepBeg   string
-	sepEnd   string
-	colNames []string
+	useTags    bool
+	base       int
+	tag        string // The tag to use when tags are being used for headers; defaults to csv.
+	handlerTag string
+	sepBeg     string
+	sepEnd     string
+	colNames   []string
 }
 
 // New returns an initialized Encoder.
 func New() *Encoder {
 	return &Encoder{
-		useTags: true, base: 10, tag: "csv",
+		useTags: true, base: 10, tag: "csv", handlerTag: "",
 		sepBeg: "(", sepEnd: ")",
 	}
 }
@@ -126,6 +127,10 @@ func (e *Encoder) SetBase(i int) {
 		i = 2
 	}
 	e.base = i
+}
+
+func (e *Encoder) SetHandlerTag(handlerTag string) {
+	e.handlerTag = handlerTag
 }
 
 // ColNames returns the encoder's saved column names as a copy.  The
@@ -172,6 +177,13 @@ func (e *Encoder) getColNames(v interface{}) []string {
 		if name == "" {
 			continue
 		}
+
+		// fieldHandler columns are always included
+		if e.handlerTag != "" && tF.Tag.Get(e.handlerTag) != "" {
+			cols = append(cols, name)
+			continue
+		}
+
 		vF := val.Field(i)
 		switch vF.Kind() {
 		case reflect.Struct:
@@ -304,6 +316,21 @@ func (e *Encoder) marshalStruct(str interface{}, child bool) ([]string, bool) {
 			continue
 		}
 		vF := val.Field(i)
+
+		if e.handlerTag != "" && tF.Tag.Get(e.handlerTag) != "" {
+			fieldHandler := tF.Tag.Get(e.handlerTag)
+			method := reflect.ValueOf(str).MethodByName(fieldHandler)
+			if method.IsValid() {
+				values := method.Call([]reflect.Value{vF})
+				value := ""
+				if len(values) > 0 {
+					value = values[0].String()
+				}
+				cols = append(cols, value)
+			}
+			continue
+		}
+
 		tmp, ok := e.marshal(vF, child)
 		if !ok {
 			// wasn't a supported kind, skip
@@ -483,7 +510,7 @@ func supportedBaseKind(val reflect.Value) bool {
 }
 
 // sliceKind returns the Kind of the slice; e.g. reflect.Slice will be
-//returned for [][]*int.
+// returned for [][]*int.
 func sliceKind(val reflect.Value) reflect.Kind {
 	switch val.Type().Elem().Kind() {
 	case reflect.Ptr:
